@@ -5,6 +5,7 @@ repo: uptime-webapp # The name of this repository
 sites:
   - name: Portfolio Page
     url: sumit-sc.github.io
+    icon: https://cdnl.iconscout.com/lottie/premium/preview-watermark/portfolio-animation-gif-download-5220633.mp4
   - name: Portfolio Website
     url: https://sumit.indevs.in
   - name: Google
