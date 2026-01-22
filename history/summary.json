@@ -2,41 +2,21 @@
   {
     "name": "Portfolio Page",
     "url": "sumit-sc.github.io",
-    "icon": "https://cdnl.iconscout.com/lottie/premium/preview-watermark/portfolio-animation-gif-download-5220633.mp4",
+    "icon": "https://ibb.co/yF29Pd46",
     "slug": "portfolio-page",
     "status": "up",
-    "uptime": "38.08%",
-    "uptimeDay": "38.08%",
-    "uptimeWeek": "38.08%",
-    "uptimeMonth": "38.08%",
-    "uptimeYear": "38.08%",
-    "time": 551,
-    "timeDay": 551,
-    "timeWeek": 551,
-    "timeMonth": 551,
-    "timeYear": 551,
+    "uptime": "85.11%",
+    "uptimeDay": "85.11%",
+    "uptimeWeek": "85.11%",
+    "uptimeMonth": "85.11%",
+    "uptimeYear": "85.11%",
+    "time": 541,
+    "timeDay": 541,
+    "timeWeek": 541,
+    "timeMonth": 541,
+    "timeYear": 541,
     "dailyMinutesDown": {
       "2026-01-22": 30
-    }
-  },
-  {
-    "name": "Portfolio Website",
-    "url": "https://sumit.indevs.in",
-    "icon": "https://icons.duckduckgo.com/ip3/sumit.indevs.in.ico",
-    "slug": "portfolio-website",
-    "status": "down",
-    "uptime": "0.00%",
-    "uptimeDay": "0.00%",
-    "uptimeWeek": "0.00%",
-    "uptimeMonth": "0.00%",
-    "uptimeYear": "0.00%",
-    "time": 0,
-    "timeDay": 0,
-    "timeWeek": 0,
-    "timeMonth": 0,
-    "timeYear": 0,
-    "dailyMinutesDown": {
-      "2026-01-22": 19
     }
   },
   {
@@ -50,11 +30,11 @@
     "uptimeWeek": "100.00%",
     "uptimeMonth": "100.00%",
     "uptimeYear": "100.00%",
-    "time": 105,
-    "timeDay": 105,
-    "timeWeek": 105,
-    "timeMonth": 105,
-    "timeYear": 105,
+    "time": 116,
+    "timeDay": 116,
+    "timeWeek": 116,
+    "timeMonth": 116,
+    "timeYear": 116,
     "dailyMinutesDown": {}
   },
   {
@@ -68,11 +48,11 @@
     "uptimeWeek": "100.00%",
     "uptimeMonth": "100.00%",
     "uptimeYear": "100.00%",
-    "time": 199,
-    "timeDay": 199,
-    "timeWeek": 199,
-    "timeMonth": 199,
-    "timeYear": 199,
+    "time": 212,
+    "timeDay": 212,
+    "timeWeek": 212,
+    "timeMonth": 212,
+    "timeYear": 212,
     "dailyMinutesDown": {}
   }
 ]
