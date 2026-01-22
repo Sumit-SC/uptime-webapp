@@ -5,9 +5,9 @@ repo: uptime-webapp # The name of this repository
 sites:
   - name: Portfolio Page
     url: sumit-sc.github.io
-    icon: https://cdnl.iconscout.com/lottie/premium/preview-watermark/portfolio-animation-gif-download-5220633.mp4
-  - name: Portfolio Website
-    url: https://sumit.indevs.in
+    icon: https://ibb.co/yF29Pd46
+  # - name: Portfolio Website
+  #   url: https://sumit.indevs.in
   - name: Google
     url: https://www.google.com
   - name: Wikipedia
@@ -36,5 +36,10 @@ status-website:
 # readmeTick: ":green_heart: Update uptime [skip ci]"
 
 # Add this at the bottom
+# notifications:
+#   - type: telegram
 notifications:
   - type: telegram
+    # If the secret-only method fails, you can try this format
+    chatId: -1002414692810 
+    messageThreadId: 1976
