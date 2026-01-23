@@ -23,7 +23,7 @@ With [Upptime](https://upptime.js.org), you can get your own unlimited and free 
 
 <!--end: status pages-->
 
-[**Visit My status website →**](http://sumit.indevs.in/uptime-webapp)
+[**Visit My status website →**](http://sumit.indevs.in/ping)
 
 [**Visit Upptimes Demo status website →**](https://demo.upptime.js.org)
 
