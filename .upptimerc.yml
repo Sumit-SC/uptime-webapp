@@ -34,7 +34,7 @@ status-website:
     - title: Portfolio Website
       href: /
     - title: Server Stats
-      href: telemetry.indevs.in
+      href: http://telemetry.indevs.in
     # - title: GitHub
     #   href: https://github.com/$OWNER/$REPO
     - title: Upp-time 
