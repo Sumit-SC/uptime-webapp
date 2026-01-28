@@ -25,18 +25,17 @@
     "icon": "https://i.ibb.co/yF29Pd46/icon.png",
     "slug": "portfolio-website",
     "status": "up",
-    "uptime": "97.34%",
-    "uptimeDay": "99.28%",
-    "uptimeWeek": "97.34%",
-    "uptimeMonth": "97.34%",
-    "uptimeYear": "97.34%",
+    "uptime": "97.46%",
+    "uptimeDay": "100.00%",
+    "uptimeWeek": "97.46%",
+    "uptimeMonth": "97.46%",
+    "uptimeYear": "97.46%",
     "time": 383,
     "timeDay": 383,
     "timeWeek": 383,
     "timeMonth": 383,
     "timeYear": 383,
     "dailyMinutesDown": {
-      "2026-01-28": 10,
       "2026-01-22": 221
     }
   },
