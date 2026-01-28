@@ -55,7 +55,7 @@ status-website:
     #   # This is the subtitle that appears below the name
     #   sub: Build your own website tracker
     - title: "Upp-time | Status Tracker"
-    href: https://upptime.js.org/
+      href: https://upptime.js.org/
 
 # Upptime also supports notifications, assigning issues, and more
 # See https://upptime.js.org/docs/configuration
