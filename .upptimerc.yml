@@ -19,13 +19,23 @@ sites:
     url: https://en.wikipedia.org
 
 status-website:
-  # Add your custom domain name, or remove the `cname` line if you don't have a domain
-  # Uncomment the `baseUrl` line if you don't have a custom domain and add your repo name there
-  # cname: demo.upptime.js.org
-  # baseUrl: /your-repo-name
-  baseUrl: /ping
+  # 1. Your custom domain
+  cname: sumit.indevs.in
+  
+  # 2. MUST be / when using a custom domain
+  baseUrl: /
+  
+  # 3. Logo and naming
   logoUrl: https://raw.githubusercontent.com/upptime/upptime.js.org/master/static/img/icon.svg
-  # name: "Sumit's Portfolio<br />Service Status"
+#   name: 'Sumit’s Portfolio<br />Service Status'
+# status-website:
+#   # Add your custom domain name, or remove the `cname` line if you don't have a domain
+#   # Uncomment the `baseUrl` line if you don't have a custom domain and add your repo name there
+#   # cname: demo.upptime.js.org
+#   # baseUrl: /your-repo-name
+#   baseUrl: /ping
+#   logoUrl: https://raw.githubusercontent.com/upptime/upptime.js.org/master/static/img/icon.svg
+#   # name: "Sumit's Portfolio<br />Service Status"
   name: |
     Sumit's Portfolio
     Service Status
