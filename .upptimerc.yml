@@ -9,7 +9,7 @@ workflow-schedule:
 sites:
   - name: Portfolio Page
     url: https://sumit-sc.github.io
-    icon: https://i.ibb.co/yF29Pd46/icon.png
+    icon: https://i.ibb.co/ZpH1RStQ/business-1991029.png
   - name: Portfolio Website
     url: https://www.sumit.indevs.in
     icon: https://i.ibb.co/yF29Pd46/icon.png
@@ -43,14 +43,17 @@ status-website:
   introMessage: This page monitors the uptime and response time of my portfolio and core services.  
   navbar:
     - title: Portfolio Website
-      href: https://sumit.indevs.in
+      href: https://www.sumit.indevs.in
     - title: Server Stats
       href: https://telemetry.indevs.in
+    - title: WebPages Monitor
+      href: sumit.betteruptime.com
     # - title: GitHub
     #   href: https://github.com/$OWNER/$REPO
     - title: Upp-time 
-      # sub: Build your own website tracker
       href: https://upptime.js.org/
+      # This is the subtitle that appears below the name
+      sub: Build your own website tracker
 
 # Upptime also supports notifications, assigning issues, and more
 # See https://upptime.js.org/docs/configuration
