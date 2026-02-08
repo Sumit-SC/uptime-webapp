@@ -6,4 +6,4 @@ jobs:
     steps:
       - name: Curl Check
         run: |
-          curl -v -L -A "Mozilla/5.0" https://your-domain.com
+          curl -v -L -A "Mozilla/5.0" https://sumit.indevs.in
