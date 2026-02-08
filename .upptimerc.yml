@@ -8,10 +8,10 @@ workflow-schedule:
   
 sites:
   - name: Portfolio Page
-    url: https://sumit-sc.github.io/
+    url: https://sumit-sc.github.io
     icon: https://i.ibb.co/ZpH1RStQ/business-1991029.png
   - name: Portfolio Website
-    url: https://www.sumit.indevs.in/
+    url: https://www.sumit.indevs.in
     icon: https://i.ibb.co/yF29Pd46/icon.png
   - name: Google
     url: https://www.google.com
