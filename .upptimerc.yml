@@ -47,7 +47,7 @@ status-website:
 #   baseUrl: /ping
 #   logoUrl: https://raw.githubusercontent.com/upptime/upptime.js.org/master/static/img/icon.svg
 #   # name: "Sumit's Portfolio<br />Service Status"
-  name: Sumit's Portfolio | Service Status
+  name: "Sumit's Portfolio | Service Status"
   introTitle: "**Service Status** for my web applications, powered by Upptime and a status page, powered entirely by GitHub."
   introMessage: This page monitors the uptime and response time of my portfolio and core services.  
   navbar:
