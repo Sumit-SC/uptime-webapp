@@ -1,33 +1,61 @@
 # Change these first
 owner: Sumit-SC # Your GitHub organization or username, where this repository lives
-repo: uptime-webapp # The name of this repository
+repo: ping # The name of this repository
 
+# Add this section to change the frequency
+workflow-schedule:
+  uptime: "*/15 * * * *"
+  
 sites:
   - name: Portfolio Page
-    url: sumit-sc.github.io
-    icon: https://ibb.co/yF29Pd46
-  # - name: Portfolio Website
-  #   url: https://sumit.indevs.in
+    url: https://sumit-sc.github.io/
+    icon: https://i.ibb.co/ZpH1RStQ/business-1991029.png
+  - name: Portfolio Website
+    url: https://www.sumit.indevs.in/
+    icon: https://i.ibb.co/yF29Pd46/icon.png
   - name: Google
     url: https://www.google.com
   - name: Wikipedia
     url: https://en.wikipedia.org
+  - name: Shopping
+    url: https//Shopping.com
 
 status-website:
-  # Add your custom domain name, or remove the `cname` line if you don't have a domain
-  # Uncomment the `baseUrl` line if you don't have a custom domain and add your repo name there
-  # cname: demo.upptime.js.org
-  # baseUrl: /your-repo-name
-  baseUrl: /uptime-webapp
+  # 1. Your custom domain
+  cname: https://status.sumit.indevs.in
+  
+  # 2. MUST be / when using a custom domain
+  baseUrl: 
+  
+  # 3. Logo and naming
   logoUrl: https://raw.githubusercontent.com/upptime/upptime.js.org/master/static/img/icon.svg
-  name: Sumit's Service Status
+#   name: 'Sumit’s Portfolio<br />Service Status'
+# status-website:
+#   # Add your custom domain name, or remove the `cname` line if you don't have a domain
+#   # Uncomment the `baseUrl` line if you don't have a custom domain and add your repo name there
+#   # cname: demo.upptime.js.org
+#   # baseUrl: /your-repo-name
+#   baseUrl: /ping
+#   logoUrl: https://raw.githubusercontent.com/upptime/upptime.js.org/master/static/img/icon.svg
+#   # name: "Sumit's Portfolio<br />Service Status"
+  name: Sumit's Portfolio | Service Status
   introTitle: "**Service Status** for my web applications, powered by Upptime and a status page, powered entirely by GitHub."
   introMessage: This page monitors the uptime and response time of my portfolio and core services.  
   navbar:
-    - title: Status
-      href: /
-    - title: GitHub
-      href: https://github.com/$OWNER/$REPO
+    - title: Portfolio Website
+      href: https://www.sumit.indevs.in
+    - title: Server Stats
+      href: https://telemetry.indevs.in
+    - title: WebPages Monitor
+      href: https://sumit.betteruptime.com
+    # - title: GitHub
+    #   href: https://github.com/$OWNER/$REPO
+    # - title: Upp-time 
+    #   href: https://upptime.js.org/
+    #   # This is the subtitle that appears below the name
+    #   sub: Build your own website tracker
+    - title: Upp-time
+      href: https://upptime.js.org/
 
 # Upptime also supports notifications, assigning issues, and more
 # See https://upptime.js.org/docs/configuration
@@ -40,6 +68,6 @@ status-website:
 #   - type: telegram
 notifications:
   - type: telegram
-    # If the secret-only method fails, you can try this format
-    chatId: -1002414692810 
-    messageThreadId: 1976
+    # # If the secret-only method fails, you can try this format
+    # chatId: -1002414692810 
+    # messageThreadId: 1976
