@@ -1,0 +1,9 @@
+name: Debug Curl
+on: workflow_dispatch
+jobs:
+  debug:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Curl Check
+        run: |
+          curl -v -L -A "Mozilla/5.0" https://your-domain.com
