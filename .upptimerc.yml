@@ -8,10 +8,10 @@ workflow-schedule:
   
 sites:
   - name: Portfolio Page
-    url: https://sumit-sc.github.io
+    url: https://sumit-sc.github.io/
     icon: https://i.ibb.co/ZpH1RStQ/business-1991029.png
   - name: Portfolio Website
-    url: https://www.sumit.indevs.in
+    url: https://www.sumit.indevs.in/
     icon: https://i.ibb.co/yF29Pd46/icon.png
   - name: Google
     url: https://www.google.com
@@ -22,7 +22,7 @@ sites:
 
 status-website:
   # 1. Your custom domain
-  cname: status.sumit.indevs.in
+  cname: https://status.sumit.indevs.in
   
   # 2. MUST be / when using a custom domain
   baseUrl: 
@@ -47,7 +47,7 @@ status-website:
     - title: Server Stats
       href: https://telemetry.indevs.in
     - title: WebPages Monitor
-      href: sumit.betteruptime.com
+      href: https://sumit.betteruptime.com
     # - title: GitHub
     #   href: https://github.com/$OWNER/$REPO
     # - title: Upp-time 
