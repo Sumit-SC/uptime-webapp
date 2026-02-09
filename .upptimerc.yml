@@ -26,8 +26,9 @@ sites:
     url: https://www.google.com
   - name: Wikipedia
     url: https://en.wikipedia.org
-  - name: Shopping
-    url: https//Shopping.com
+  #   # Offline Site to test for outage alert-checks
+  # - name: Shopping
+  #   url: https//Shopping.com
 
 status-website:
   # 1. Your custom domain
