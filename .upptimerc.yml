@@ -19,6 +19,9 @@ sites:
       - "Accept-Language: en-US,en;q=0.5"
       - "Cache-Control: no-cache"
       - "Pragma: no-cache"
+  - name: Personal-Lab
+    url: https://www.colab.indevs.in
+    icon: https://i.ibb.co/k6GgHg8J/photo-2026-02-13-17-47-19.jpg
   - name: Portfolio Website
     url: https://www.sumit.indevs.in
     icon: https://i.ibb.co/yF29Pd46/icon.png
