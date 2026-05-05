@@ -30,8 +30,8 @@ sites:
   - name: Wikipedia
     url: https://en.wikipedia.org
   #   # Offline Site to test for outage alert-checks
-  # - name: Shopping
-  #   url: https//Shopping.com
+  - name: Shopping
+    url: https//Shopping.com
   # - name: test
   #   url: https://example.koj.co
   - name: down-web
@@ -93,3 +93,17 @@ status-website:
 #     headers:
 #       - "Content-Type: application/json"
 #     body: '{"chat_id": "$CHAT_ID", "message_thread_id": $TOPIC_ID, "text": "$TEXT"}'
+
+
+notifications:
+  - type: webhook
+    url: "https://api.telegram.org/bot$BOT_TOKEN/sendMessage"
+    method: "POST"
+    headers:
+      Content-Type: "application/json"
+    body: |
+      {
+        "chat_id": "$CHAT_ID",
+        "message_thread_id": $TOPIC_ID,
+        "text": "$TEXT"
+      }
