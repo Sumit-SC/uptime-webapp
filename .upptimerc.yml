@@ -99,6 +99,6 @@ notifications:
     url: "https://api.telegram.org/bot$BOT_TOKEN/sendMessage"
     method: "POST"
     headers:
-      - "Content-Type: application/json"
+      - Content-Type: "application/json"
     # Notice: No quotes around $TOPIC_ID to keep it a number
     body: '{"chat_id": "$CHAT_ID", "message_thread_id": $TOPIC_ID, "text": "$TEXT"}'
