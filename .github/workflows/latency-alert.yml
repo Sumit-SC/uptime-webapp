@@ -2,7 +2,7 @@ name: Latency Spike Alerts
 
 on:
   schedule:
-    - cron: "*/30 * * * *"   # every 30 minutes
+    - cron: "*/30 * * * *"
   workflow_dispatch:
 
 jobs:
@@ -30,12 +30,11 @@ jobs:
 
             [ "$STATUS" != "up" ] && continue
 
-            YML_FILE="history/$SLUG.yml"
-            [ ! -f "$YML_FILE" ] && continue
+            JSON_FILE="history/$SLUG.json"
+            [ ! -f "$JSON_FILE" ] && continue
 
-            CURRENT=$(grep 'responseTime:' "$YML_FILE" | awk '{print $2}')
-
-            HISTORY=$(jq -r ".history[-10:][]?.responseTime" "$YML_FILE" 2>/dev/null)
+            CURRENT=$(jq -r ".[-1].responseTime" "$JSON_FILE")
+            HISTORY=$(jq -r ".[]?.responseTime" "$JSON_FILE" | tail -n 10)
 
             SUM=0
             COUNT_H=0
@@ -49,7 +48,7 @@ jobs:
             AVG=$((SUM / COUNT_H))
             THRESHOLD=$((AVG * 2))
 
-            # ===== persistence =====
+            # persistence
             STATE_FILE=".cache/spike_$SLUG"
             PREV=0
             [ -f "$STATE_FILE" ] && PREV=$(cat "$STATE_FILE")
@@ -61,12 +60,11 @@ jobs:
 
             echo "$SPIKE" > "$STATE_FILE"
 
-            # require 2 consecutive spikes
             if [ "$SPIKE" -ne 1 ] || [ "$PREV" -ne 1 ]; then
               continue
             fi
 
-            # ===== cooldown (2 hrs) =====
+            # cooldown (2h)
             COOLDOWN_FILE=".cache/alert_$SLUG"
             NOW=$(date +%s)
 
@@ -96,7 +94,7 @@ jobs:
             echo "alert=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Send Telegram alert
+      - name: Send Telegram
         if: steps.analyze.outputs.alert == 'true'
         run: |
           MESSAGE="${{ steps.analyze.outputs.msg }}\n🕒 $(TZ='Asia/Kolkata' date +"%d %b %Y | %I:%M %p IST")"
@@ -104,7 +102,7 @@ jobs:
           PAYLOAD=$(jq -n \
             --arg chat_id "${{ secrets.CHAT_ID }}" \
             --arg text "$MESSAGE" \
-            --argjson thread_id ${{ secrets.ALERT_TOPIC_ID }} \
+            --argjson thread_id ${{ secrets.ALERTS_TOPIC_ID }} \
             '{
               chat_id: $chat_id,
               message_thread_id: $thread_id,
