@@ -1,4 +1,4 @@
-name: Latency Spike Alerts (Final Smart System)
+name: Latency Spike Alerts (Final Split System)
 
 on:
   schedule:
@@ -21,13 +21,13 @@ jobs:
         id: analyze
         env:
           STATUS_BASE_URL: ${{ secrets.STATUS_BASE_URL }}
-          INCIDENT_BASE_URL: ${{ secrets.INCIDENT_BASE_URL }}
           DEBUG_MODE: ${{ github.event.inputs.debug }}
         run: |
           mkdir -p .cache
-          FILE="history/summary.json"
 
-          TMP=$(mktemp)
+          FILE="history/summary.json"
+          TMP_ALL=$(mktemp)
+          TMP_ALERT=$(mktemp)
 
           COUNT=$(jq length "$FILE")
 
@@ -44,30 +44,37 @@ jobs:
             CURRENT=$(grep 'responseTime:' "$YML_FILE" | awk '{print $2}')
             [ -z "$CURRENT" ] && continue
 
+            # store all (for insights)
+            echo "$CURRENT|$NAME|$SLUG" >> $TMP_ALL
+
             # =========================
-            # 🎯 LATENCY LADDER
+            # 🎯 LADDER
             # =========================
             if [ "$CURRENT" -lt 150 ]; then
-              LEVEL="🟢 Normal"
+              LEVEL="🟢"
               ALERT=0
             elif [ "$CURRENT" -lt 500 ]; then
-              LEVEL="⚡ Slight"
+              LEVEL="⚡"
               ALERT=0
             elif [ "$CURRENT" -lt 1000 ]; then
-              LEVEL="⚠ Moderate"
+              LEVEL="⚠"
               ALERT=0
             elif [ "$CURRENT" -lt 2500 ]; then
-              LEVEL="🚨 High"
+              LEVEL="🚨"
               ALERT=1
             else
-              LEVEL="🛑 Severe"
+              LEVEL="🛑"
               ALERT=1
             fi
 
-            # debug override
+            # debug override (still filter <200 to avoid noise)
             if [ "$DEBUG_MODE" = "true" ]; then
-              ALERT=1
-              LEVEL="🧪 Debug"
+              if [ "$CURRENT" -ge 200 ]; then
+                ALERT=1
+                LEVEL="🧪"
+              else
+                ALERT=0
+              fi
             fi
 
             [ "$ALERT" -ne 1 ] && continue
@@ -87,55 +94,63 @@ jobs:
 
             echo "$NOW" > "$COOLDOWN_FILE"
 
-            # store for sorting
-            echo "$CURRENT|$LEVEL|$NAME|$SLUG" >> $TMP
+            echo "$CURRENT|$LEVEL|$NAME|$SLUG" >> $TMP_ALERT
 
           done
 
           # =========================
-          # 🏆 SORT + TOP N
+          # 🔴 CRITICAL ALERTS (Top 3 ≥1000ms)
           # =========================
-          SORTED=$(sort -nr $TMP)
-
-          TOTAL_ALERTS=$(echo "$SORTED" | wc -l)
-
-          if [ "$TOTAL_ALERTS" -gt 3 ]; then
-            FINAL=$(echo "$SORTED" | head -n 3)
-          else
-            FINAL="$SORTED"
-          fi
-
-          # =========================
-          # 📦 BUILD MESSAGE
-          # =========================
-          MSG="🚨 Latency Alerts\n\n"
+          ALERT_BLOCK=""
+          SORTED_ALERT=$(sort -nr $TMP_ALERT | head -n 3)
 
           INDEX=1
           while IFS="|" read -r LAT LEVEL NAME SLUG; do
             [ -z "$LAT" ] && continue
 
-            MSG+="$INDEX. $LEVEL\n"
-            MSG+="🌐 $NAME\n"
-            MSG+="⚡ $LAT ms\n"
-            MSG+="🔗 $STATUS_BASE_URL/$SLUG\n\n"
+            ALERT_BLOCK+="$INDEX. $LEVEL $NAME\n"
+            ALERT_BLOCK+="   ⚡ $LAT ms\n"
+            ALERT_BLOCK+="   🔗 $STATUS_BASE_URL/$SLUG\n\n"
 
             INDEX=$((INDEX+1))
-          done <<< "$FINAL"
+          done <<< "$SORTED_ALERT"
 
-          if [ "$INDEX" -eq 1 ]; then
-            echo "alert=false" >> $GITHUB_OUTPUT
-            exit 0
+          # =========================
+          # 📊 INSIGHTS (Top 3 overall)
+          # =========================
+          INSIGHT_BLOCK="📊 Performance Insights\n\n"
+
+          SORTED_ALL=$(sort -nr $TMP_ALL | head -n 3)
+
+          while IFS="|" read -r LAT NAME SLUG; do
+            [ -z "$LAT" ] && continue
+
+            INSIGHT_BLOCK+="🌐 $NAME\n"
+            INSIGHT_BLOCK+="⚡ $LAT ms\n\n"
+          done <<< "$SORTED_ALL"
+
+          # =========================
+          # FINAL MESSAGE
+          # =========================
+          FINAL=""
+
+          if [ -n "$ALERT_BLOCK" ]; then
+            FINAL+="🚨 Critical Alerts\n\n$ALERT_BLOCK"
+            FINAL+="━━━━━━━━━━━━━━━━━━\n\n"
           fi
+
+          FINAL+="$INSIGHT_BLOCK"
 
           echo "alert=true" >> $GITHUB_OUTPUT
           echo "msg<<EOF" >> $GITHUB_OUTPUT
-          echo -e "$MSG" >> $GITHUB_OUTPUT
+          echo -e "$FINAL" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Send Telegram
-        if: steps.analyze.outputs.alert == 'true'
         run: |
-          MESSAGE="${{ steps.analyze.outputs.msg }}\n🕒 $(TZ='Asia/Kolkata' date +"%d %b %Y | %I:%M %p IST")"
+          MESSAGE="${{ steps.analyze.outputs.msg }}
+
+🕒 $(TZ='Asia/Kolkata' date +"%d %b %Y | %I:%M %p IST")"
 
           PAYLOAD=$(jq -n \
             --arg chat_id "${{ secrets.CHAT_ID }}" \
