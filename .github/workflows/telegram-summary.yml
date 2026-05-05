@@ -56,7 +56,7 @@ jobs:
               DOWN=$((DOWN+1))
             fi
 
-            # latency
+            # latency from YAML
             YML_FILE="history/$SLUG.yml"
             LATENCY=""
             if [ -f "$YML_FILE" ]; then
@@ -80,8 +80,9 @@ jobs:
               LAT_LABEL="—"
             fi
 
-            # health bar
-            UP_NUM=$(echo "$UPTIME" | sed 's/%//g' | cut -d'.' -f1)
+            # SAFE uptime parsing
+            UP_NUM=$(echo "$UPTIME" | grep -o '[0-9]*' | head -1)
+            UP_NUM=${UP_NUM:-0}
 
             FILLED=$((UP_NUM / 20))
             EMPTY=$((5 - FILLED))
@@ -106,18 +107,13 @@ jobs:
           # combine DOWN first
           COMBINED="$DOWN_BLOCK$UP_BLOCK"
 
-          # BLOCK-BASED numbering (FIXED)
-          INDEX=1
-          OUTPUT=""
+          # SAFE BLOCK NUMBERING (no read -d issue)
+          echo "$COMBINED" | awk -v RS="" -v ORS="\n\n" '
+          {
+            printf "%d. %s\n\n", NR, $0
+          }' > numbered.txt
 
-          IFS=$'\n\n' read -d '' -r -a BLOCKS <<< "$COMBINED"
-
-          for block in "${BLOCKS[@]}"; do
-            [[ -z "$block" ]] && continue
-            OUTPUT+="$INDEX. $block\n\n"
-            INDEX=$((INDEX+1))
-          done
-
+          OUTPUT=$(cat numbered.txt)
           SUMMARY+="$OUTPUT"
 
           # overall metrics
