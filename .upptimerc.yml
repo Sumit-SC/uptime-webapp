@@ -34,9 +34,9 @@ sites:
   #   url: https//Shopping.com
   # - name: test
   #   url: https://example.koj.co
-  - name: mitsu-web
-    url: https://mitsus.dev/
-
+  - name: Streamio
+    url: idx.theworkpc.com
+    
 status-website:
   # 1. Your custom domain
   cname: status.sumit.indevs.in
@@ -95,15 +95,15 @@ status-website:
 #     body: '{"chat_id": "$CHAT_ID", "message_thread_id": $TOPIC_ID, "text": "$TEXT"}'
 
 
-notifications:
-  - type: webhook
-    url: "https://api.telegram.org/bot$BOT_TOKEN/sendMessage"
-    method: "POST"
-    headers:
-      Content-Type: "application/json"
-    body: |
-      {
-        "chat_id": "$CHAT_ID",
-        "message_thread_id": $TOPIC_ID,
-        "text": "$TEXT"
-      }
+# notifications:
+#   - type: webhook
+#     url: "https://api.telegram.org/bot$BOT_TOKEN/sendMessage"
+#     method: "POST"
+#     headers:
+#       Content-Type: "application/json"
+#     body: |
+#       {
+#         "chat_id": "$CHAT_ID",
+#         "message_thread_id": $TOPIC_ID,
+#         "text": "$TEXT"
+#       }
