@@ -1,4 +1,4 @@
-name: Telegram Alerts (Upptime)
+name: Incident Alerts (Upptime Issues → Telegram)
 
 on:
   issues:
