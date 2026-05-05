@@ -29,11 +29,11 @@ sites:
     url: https://www.google.com
   - name: Wikipedia
     url: https://en.wikipedia.org
-  # #   # Offline Site to test for outage alert-checks
-  # - name: Shopping
-  #   url: https//Shopping.com
-  # - name: test
-  #   url: https://example.koj.co
+  #   # Offline Site to test for outage alert-checks
+  - name: Shopping
+    url: https//Shopping.com
+  - name: test
+    url: https://example.koj.co
 
 status-website:
   # 1. Your custom domain
@@ -83,3 +83,12 @@ status-website:
 #     # If the secret-only method fails, you can try this format
 #     token: "$NOTIFICATION_TELEGRAM_TOKEN"
 #     chatId: "$NOTIFICATION_TELEGRAM_CHAT_ID"
+
+notifications:
+  - type: webhook
+    url: "https://telegram.org"
+    method: "POST"
+    headers:
+      - "Content-Type: application/json"
+    body: '{"chat_id": "$CHAT_ID", "message_thread_id": $TOPIC_ID, "text": "$TEXT"}'
+
