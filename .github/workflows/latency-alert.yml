@@ -34,7 +34,7 @@ jobs:
             CURRENT=$(grep 'responseTime:' "$YML_FILE" | awk '{print $2}')
 
             # ===== Simple Spike Logic =====
-            if [ "$CURRENT" -gt 1500 ]; then
+            if [ "$CURRENT" -gt 1 ]; then
 
               ALERTS+="🚨 High Latency Detected\n"
               ALERTS+="🌐 $NAME\n"
