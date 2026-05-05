@@ -56,20 +56,20 @@ jobs:
               DOWN=$((DOWN+1))
             fi
 
-            # latency from YAML
+            # latency
             YML_FILE="history/$SLUG.yml"
             LATENCY=""
             if [ -f "$YML_FILE" ]; then
               LATENCY=$(grep 'responseTime:' "$YML_FILE" | awk '{print $2}')
             fi
 
-            if [ -n "$LATENCY" ]; then
+            if [ "$STATUS" = "down" ]; then
+              LAT_LABEL="🚨 DOWN"
+            elif [ -n "$LATENCY" ]; then
               LAT_SUM=$((LAT_SUM + LATENCY))
               LAT_COUNT=$((LAT_COUNT + 1))
 
-              if [ "$STATUS" = "down" ]; then
-                LAT_LABEL="🚨 DOWN"
-              elif [ "$LATENCY" -lt 500 ]; then
+              if [ "$LATENCY" -lt 500 ]; then
                 LAT_LABEL="⚡ $LATENCY ms (Fast)"
               elif [ "$LATENCY" -lt 1500 ]; then
                 LAT_LABEL="⚠ $LATENCY ms (Moderate)"
@@ -80,7 +80,7 @@ jobs:
               LAT_LABEL="—"
             fi
 
-            # SAFE uptime parsing
+            # ===== HEALTH COLOR LOGIC =====
             UP_NUM=$(echo "$UPTIME" | grep -o '[0-9]*' | head -1)
             UP_NUM=${UP_NUM:-0}
 
@@ -88,8 +88,24 @@ jobs:
             EMPTY=$((5 - FILLED))
 
             HBAR=""
-            for j in $(seq 1 $FILLED); do HBAR+="🟩"; done
-            for j in $(seq 1 $EMPTY); do HBAR+="⬜"; done
+
+            if [ "$STATUS" = "down" ]; then
+              # FULL RED BAR
+              for j in $(seq 1 5); do HBAR+="🟥"; done
+            else
+              if [ "$UP_NUM" -ge 80 ]; then
+                COLOR="🟩"   # strong green
+              elif [ "$UP_NUM" -ge 60 ]; then
+                COLOR="🟨"   # yellow
+              elif [ "$UP_NUM" -ge 40 ]; then
+                COLOR="🟧"   # orange
+              else
+                COLOR="🟥"   # red
+              fi
+
+              for j in $(seq 1 $FILLED); do HBAR+="$COLOR"; done
+              for j in $(seq 1 $EMPTY); do HBAR+="⬜"; done
+            fi
 
             STATUS_URL="$STATUS_BASE_URL/$SLUG"
 
@@ -104,19 +120,17 @@ jobs:
             fi
           done
 
-          # combine DOWN first
           COMBINED="$DOWN_BLOCK$UP_BLOCK"
 
-          # SAFE BLOCK NUMBERING (no read -d issue)
+          # SAFE numbering
           echo "$COMBINED" | awk -v RS="" -v ORS="\n\n" '
           {
             printf "%d. %s\n\n", NR, $0
           }' > numbered.txt
 
-          OUTPUT=$(cat numbered.txt)
-          SUMMARY+="$OUTPUT"
+          SUMMARY+=$(cat numbered.txt)
 
-          # overall metrics
+          # ===== OVERALL METRICS =====
           UP=$((TOTAL - DOWN))
 
           if [ "$TOTAL" -gt 0 ]; then
@@ -135,7 +149,18 @@ jobs:
           EMPTY=$((5 - FILLED))
 
           BAR=""
-          for i in $(seq 1 $FILLED); do BAR+="🟩"; done
+
+          if [ "$HEALTH" -ge 80 ]; then
+            COLOR="🟩"
+          elif [ "$HEALTH" -ge 60 ]; then
+            COLOR="🟨"
+          elif [ "$HEALTH" -ge 40 ]; then
+            COLOR="🟧"
+          else
+            COLOR="🟥"
+          fi
+
+          for i in $(seq 1 $FILLED); do BAR+="$COLOR"; done
           for i in $(seq 1 $EMPTY); do BAR+="⬜"; done
 
           SUMMARY+="━━━━━━━━━━━━━━━━━━\n\n"
