@@ -16,8 +16,6 @@ jobs:
       - name: Analyze latency
         id: analyze
         run: |
-          mkdir -p .cache
-
           FILE="history/summary.json"
           ALERTS=""
 
@@ -30,59 +28,21 @@ jobs:
 
             [ "$STATUS" != "up" ] && continue
 
-            JSON_FILE="history/$SLUG.json"
-            [ ! -f "$JSON_FILE" ] && continue
+            YML_FILE="history/$SLUG.yml"
+            [ ! -f "$YML_FILE" ] && continue
 
-            CURRENT=$(jq -r ".[-1].responseTime" "$JSON_FILE")
-            HISTORY=$(jq -r ".[]?.responseTime" "$JSON_FILE" | tail -n 10)
+            CURRENT=$(grep 'responseTime:' "$YML_FILE" | awk '{print $2}')
 
-            SUM=0
-            COUNT_H=0
+            # ===== Simple Spike Logic =====
+            if [ "$CURRENT" -gt 1500 ]; then
 
-            for val in $HISTORY; do
-              [[ "$val" =~ ^[0-9]+$ ]] && SUM=$((SUM + val)) && COUNT_H=$((COUNT_H + 1))
-            done
+              ALERTS+="🚨 High Latency Detected\n"
+              ALERTS+="🌐 $NAME\n"
+              ALERTS+="⚡ $CURRENT ms\n"
+              ALERTS+="🔗 https://status.sumit.indevs.in/history/$SLUG\n\n"
 
-            [ "$COUNT_H" -eq 0 ] && continue
-
-            AVG=$((SUM / COUNT_H))
-            THRESHOLD=$((AVG * 2))
-
-            # persistence
-            STATE_FILE=".cache/spike_$SLUG"
-            PREV=0
-            [ -f "$STATE_FILE" ] && PREV=$(cat "$STATE_FILE")
-
-            SPIKE=0
-            if [ "$CURRENT" -gt 1 ]; then
-              SPIKE=1
             fi
 
-            echo "$SPIKE" > "$STATE_FILE"
-
-            if [ "$SPIKE" -ne 1 ]; then
-              continue
-            fi
-
-            # cooldown (2h)
-            COOLDOWN_FILE=".cache/alert_$SLUG"
-            NOW=$(date +%s)
-
-            if [ -f "$COOLDOWN_FILE" ]; then
-              LAST=$(cat "$COOLDOWN_FILE")
-              if [ $((NOW - LAST)) -lt 7200 ]; then
-                continue
-              fi
-            fi
-
-            echo "$NOW" > "$COOLDOWN_FILE"
-
-            ALERTS+="🚨 Latency Spike (Persistent)\n"
-            ALERTS+="🌐 $NAME\n"
-            ALERTS+="⚡ Current: $CURRENT ms\n"
-            ALERTS+="📊 Avg: $AVG ms\n"
-            ALERTS+="📈 Deviation: $((CURRENT - AVG)) ms\n"
-            ALERTS+="🔗 https://status.sumit.indevs.in/history/$SLUG\n\n"
           done
 
           if [ -n "$ALERTS" ]; then
