@@ -41,7 +41,6 @@ jobs:
 
             TOTAL=$((TOTAL+1))
 
-            # Status icon
             if [ "$STATUS" = "up" ]; then
               ICON="🟢"
             else
@@ -49,14 +48,13 @@ jobs:
               DOWN=$((DOWN+1))
             fi
 
-            # Read YAML for latency
+            # Latency from YAML
             YML_FILE="history/$SLUG.yml"
             LATENCY=""
             if [ -f "$YML_FILE" ]; then
               LATENCY=$(grep 'responseTime:' "$YML_FILE" | awk '{print $2}')
             fi
 
-            # Latency rating
             if [ -n "$LATENCY" ]; then
               LAT_SUM=$((LAT_SUM + LATENCY))
               LAT_COUNT=$((LAT_COUNT + 1))
@@ -69,20 +67,22 @@ jobs:
                 LAT_LABEL="🐢 $LATENCY ms (Slow)"
               fi
             else
-              LAT_LABEL="—"
+              LAT_LABEL="🚨 No data"
             fi
 
-            # Your status page link (as requested)
+            # Links (NO preview)
             STATUS_URL="https://status.sumit.indevs.in/history/$SLUG"
+            GRAPH_URL="https://github.com/${{ github.repository }}/blob/master/graphs/$SLUG/response-time-week.png"
 
             SUMMARY+="$INDEX️⃣ $ICON $NAME\n"
             SUMMARY+="   Status: $STATUS | $LAT_LABEL | Uptime: $UPTIME\n"
-            SUMMARY+="   🔗 $STATUS_URL\n\n"
+            SUMMARY+="   🔗 Status: $STATUS_URL\n"
+            SUMMARY+="   📊 Graph: $GRAPH_URL\n\n"
 
             INDEX=$((INDEX+1))
           done
 
-          # Overall metrics
+          # Metrics
           UP=$((TOTAL - DOWN))
 
           if [ "$TOTAL" -gt 0 ]; then
@@ -97,7 +97,7 @@ jobs:
             AVG_LAT=0
           fi
 
-          # Health bar (5 blocks)
+          # Health bar
           FILLED=$((HEALTH / 20))
           EMPTY=$((5 - FILLED))
 
@@ -109,6 +109,7 @@ jobs:
           SUMMARY+="📈 Health: $BAR $HEALTH%\n"
           SUMMARY+="⚡ Avg Latency: $AVG_LAT ms\n"
           SUMMARY+="🔴 Down: $DOWN / $TOTAL\n\n"
+          SUMMARY+="🔗 Dashboard: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}\n\n"
           SUMMARY+="🕒 $(TZ='Asia/Kolkata' date +"%d %b %Y | %I:%M %p IST")"
 
           echo "message<<EOF" >> $GITHUB_OUTPUT
