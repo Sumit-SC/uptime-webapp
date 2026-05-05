@@ -36,7 +36,13 @@ jobs:
           SUMMARY="📊 <b>Uptime Summary</b>\n\n"
 
           for file in history/*.json; do
-              [[ "$file" == *"summary.json" ]] && continue
+            # Skip summary.json (CRITICAL)
+            [[ "$(basename "$file")" == "summary.json" ]] && continue
+
+            NAME=$(basename "$file" .json)
+
+            # Escape HTML special characters
+            SAFE_NAME=$(echo "$NAME" | sed 's/&/&amp;/g; s/</&lt;/g; s/>/&gt;/g')
 
             STATUS=$(jq -r '.status' "$file")
             LATENCY=$(jq -r '.responseTime // empty' "$file")
@@ -60,9 +66,7 @@ jobs:
               DOWN=$((DOWN+1))
             fi
 
-            # Links
             STATUS_URL="$REPO_URL/$NAME"
-            GRAPH_URL="$REPO_URL/$NAME"
 
             # Latency + rating
             if [ -n "$LATENCY" ] && [ "$LATENCY" != "null" ]; then
@@ -80,8 +84,9 @@ jobs:
               LAT_LABEL="🚨 No response"
             fi
 
-            SUMMARY+="$INDEX️⃣ $ICON <a href=\"$STATUS_URL\">$NAME</a>\n"
-            SUMMARY+="   Status: <a href=\"$STATUS_URL\">$STATUS_TEXT</a> | <a href=\"$GRAPH_URL\">$LAT_LABEL</a> | $GRAPH\n\n"
+            # SAFE HTML (only one link per site)
+            SUMMARY+="$INDEX️⃣ $ICON <a href=\"$STATUS_URL\">$SAFE_NAME</a>\n"
+            SUMMARY+="   Status: $STATUS_TEXT | $LAT_LABEL | $GRAPH\n\n"
 
             INDEX=$((INDEX+1))
           done
@@ -101,7 +106,7 @@ jobs:
             AVG_LAT=0
           fi
 
-          # Health bar (5 blocks)
+          # Health bar
           FILLED=$((HEALTH / 20))
           EMPTY=$((5 - FILLED))
 
