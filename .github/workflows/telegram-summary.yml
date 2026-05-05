@@ -24,15 +24,17 @@ jobs:
         run: |
           REPO_URL="https://sumit.indevs.in/ping"
 
-          SUMMARY="📊 <b>Uptime Summary</b>\n"
+          SUMMARY="📊 Uptime Summary\n"
           SUMMARY+="🔗 Dashboard: $REPO_URL\n\n"
 
           FILE="history/summary.json"
+
           TOTAL=0
           DOWN=0
           LAT_SUM=0
           LAT_COUNT=0
-          INDEX=1
+
+          OUTPUT=""
 
           COUNT=$(jq length "$FILE")
 
@@ -51,10 +53,7 @@ jobs:
               DOWN=$((DOWN+1))
             fi
 
-            # Escape HTML chars (only needed for <b>)
-            SAFE_NAME=$(echo "$NAME" | sed 's/&/&amp;/g; s/</&lt;/g; s/>/&gt;/g')
-
-            # Latency
+            # latency
             YML_FILE="history/$SLUG.yml"
             LATENCY=""
             if [ -f "$YML_FILE" ]; then
@@ -66,27 +65,32 @@ jobs:
               LAT_COUNT=$((LAT_COUNT + 1))
 
               if [ "$LATENCY" -lt 500 ]; then
-                LAT_LABEL="⚡ $LATENCY ms"
+                LAT_LABEL="⚡ $LATENCY ms (Fast)"
               elif [ "$LATENCY" -lt 1500 ]; then
-                LAT_LABEL="⚠ $LATENCY ms"
+                LAT_LABEL="⚠ $LATENCY ms (Moderate)"
               else
-                LAT_LABEL="🐢 $LATENCY ms"
+                LAT_LABEL="🐢 $LATENCY ms (Slow)"
               fi
             else
               LAT_LABEL="—"
             fi
 
             STATUS_URL="https://status.sumit.indevs.in/history/$SLUG"
-            GRAPH_URL="https://github.com/${{ github.repository }}/blob/master/graphs/$SLUG/response-time-week.png"
 
-            SUMMARY+="$INDEX️⃣ $ICON <b>$SAFE_NAME</b>\n"
-            SUMMARY+="   $LAT_LABEL | $UPTIME uptime\n"
-            SUMMARY+="   🔗 Status: $STATUS_URL\n"
-            SUMMARY+="   📊 Graph: $GRAPH_URL\n\n"
+            LINE="$ICON $NAME\n   $LAT_LABEL | Uptime: $UPTIME\n   🔗 $STATUS_URL\n\n"
 
-            INDEX=$((INDEX+1))
+            # PRIORITIZE DOWN sites
+            if [ "$STATUS" = "down" ]; then
+              OUTPUT="$LINE$OUTPUT"
+            else
+              OUTPUT="$OUTPUT$LINE"
+            fi
+
           done
 
+          SUMMARY+="$OUTPUT"
+
+          # metrics
           UP=$((TOTAL - DOWN))
 
           if [ "$TOTAL" -gt 0 ]; then
@@ -101,6 +105,7 @@ jobs:
             AVG_LAT=0
           fi
 
+          # health bar
           FILLED=$((HEALTH / 20))
           EMPTY=$((5 - FILLED))
 
@@ -109,9 +114,9 @@ jobs:
           for i in $(seq 1 $EMPTY); do BAR+="⬜"; done
 
           SUMMARY+="━━━━━━━━━━━━━━━━━━\n\n"
-          SUMMARY+="📈 <b>Health:</b> $BAR $HEALTH%\n"
-          SUMMARY+="⚡ <b>Avg Latency:</b> $AVG_LAT ms\n"
-          SUMMARY+="🔴 <b>Down:</b> $DOWN / $TOTAL\n\n"
+          SUMMARY+="📈 Health: $BAR $HEALTH%\n"
+          SUMMARY+="⚡ Avg Latency: $AVG_LAT ms\n"
+          SUMMARY+="🔴 Down: $DOWN / $TOTAL\n\n"
           SUMMARY+="🕒 $(TZ='Asia/Kolkata' date +"%d %b %Y | %I:%M %p IST")"
 
           echo "message<<EOF" >> $GITHUB_OUTPUT
@@ -134,11 +139,8 @@ jobs:
               chat_id: $chat_id,
               message_thread_id: $thread_id,
               text: $text,
-              parse_mode: "HTML",
               disable_web_page_preview: true
             }')
-
-          echo "$PAYLOAD"
 
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.SUMMARY_BOT_TOKEN }}/sendMessage" \
             -H "Content-Type: application/json" \
