@@ -1,4 +1,4 @@
-name: Telegram Alerts (Upptime Events)
+name: Telegram Alerts (Upptime)
 
 on:
   issues:
@@ -9,6 +9,21 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Filter Upptime issues only
+        id: filter
+        run: |
+          TITLE="${{ github.event.issue.title }}"
+
+          if [[ "$TITLE" == *"is down"* ]] || [[ "$TITLE" == *"is up"* ]]; then
+            echo "valid=true" >> $GITHUB_OUTPUT
+          else
+            echo "valid=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Stop if not relevant
+        if: steps.filter.outputs.valid != 'true'
+        run: exit 0
+
       - name: Build alert message
         id: build
         run: |
@@ -16,22 +31,28 @@ jobs:
           URL="${{ github.event.issue.html_url }}"
           ACTION="${{ github.event.action }}"
 
-          # Detect UP/DOWN
+          # ===== STATUS DETECTION =====
           if [[ "$TITLE" == *"is down"* ]]; then
             STATUS="DOWN"
-            ICON="🚨"
+            ICON="🛑"
+            ALERT="🚨 INCIDENT"
           elif [[ "$TITLE" == *"is up"* ]]; then
             STATUS="RECOVERED"
-            ICON="✅"
+            ICON="🟢"
+            ALERT="✅ RESOLVED"
           else
             STATUS="UPDATE"
             ICON="ℹ️"
+            ALERT="ℹ️ UPDATE"
           fi
 
-          MESSAGE="$ICON Uptime Alert\n\n"
-          MESSAGE+="Site: $TITLE\n"
-          MESSAGE+="Status: $STATUS\n"
-          MESSAGE+="🔗 $URL\n\n"
+          # Extract clean site name
+          SITE=$(echo "$TITLE" | sed 's/ is down.*//; s/ is up.*//')
+
+          MESSAGE="$ICON $ALERT\n\n"
+          MESSAGE+="🌐 Site: $SITE\n"
+          MESSAGE+="📡 Status: $STATUS\n"
+          MESSAGE+="🔗 Details: $URL\n\n"
           MESSAGE+="🕒 $(TZ='Asia/Kolkata' date +"%d %b %Y | %I:%M %p IST")"
 
           echo "msg<<EOF" >> $GITHUB_OUTPUT
