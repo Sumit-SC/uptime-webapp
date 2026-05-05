@@ -32,8 +32,8 @@ sites:
   #   # Offline Site to test for outage alert-checks
   - name: Shopping
     url: https//Shopping.com
-  # - name: test
-  #   url: https://example.koj.co
+  - name: test
+    url: https://example.koj.co
   - name: Streamio
     url: idx.theworkpc.com
     icon: https://i.postimg.cc/XqWnmDXr/Picsart-25-10-09-08-09-45-867.png
