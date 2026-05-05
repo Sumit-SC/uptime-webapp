@@ -30,12 +30,12 @@ sites:
   - name: Wikipedia
     url: https://en.wikipedia.org
   #   # Offline Site to test for outage alert-checks
-  - name: Shopping
-    url: https//Shopping.com
-  - name: test
-    url: https://example.koj.co
-  - name: test
-    url: https://examplssse.koj.co
+  # - name: Shopping
+  #   url: https//Shopping.com
+  # - name: test
+  #   url: https://example.koj.co
+  - name: down-web
+    url: https://this-is-a-fake-site-123456.com
 
 status-website:
   # 1. Your custom domain
