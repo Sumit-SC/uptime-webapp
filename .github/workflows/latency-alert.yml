@@ -148,9 +148,7 @@ jobs:
 
       - name: Send Telegram
         run: |
-          MESSAGE="${{ steps.analyze.outputs.msg }}
-
-🕒 $(TZ='Asia/Kolkata' date +"%d %b %Y | %I:%M %p IST")"
+          MESSAGE="${{ steps.analyze.outputs.msg }}\n 🕒 $(TZ='Asia/Kolkata' date +"%d %b %Y | %I:%M %p IST")"
 
           PAYLOAD=$(jq -n \
             --arg chat_id "${{ secrets.CHAT_ID }}" \
