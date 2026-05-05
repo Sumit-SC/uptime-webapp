@@ -106,13 +106,15 @@ jobs:
           # combine (DOWN first)
           COMBINED="$DOWN_BLOCK$UP_BLOCK"
 
-          # apply numbering AFTER ordering
+          # correct numbering
           INDEX=1
           OUTPUT=""
 
           while IFS= read -r line; do
-            if [[ "$line" =~ ^🟢|^🔴 ]]; then
-              OUTPUT+="$INDEX. $line\n"
+            TRIMMED=$(echo "$line" | sed 's/^[[:space:]]*//')
+
+            if [[ "$TRIMMED" =~ ^(🟢|🔴) ]]; then
+              OUTPUT+="$INDEX. $TRIMMED\n"
               INDEX=$((INDEX+1))
             else
               OUTPUT+="$line\n"
@@ -147,23 +149,17 @@ jobs:
           SUMMARY+="📈 Health: $BAR $HEALTH%\n"
           SUMMARY+="⚡ Avg Latency: $AVG_LAT ms\n"
           SUMMARY+="🔴 Down: $DOWN / $TOTAL\n\n"
-          SUMMARY+="🕒 $(TZ='Asia/Kolkata' date +"%d %b %Y | %I:%M %p IST")"
+          SUMMARY+="🕒 $(TZ='Asia/Kolkata' date +"%d %b %Y | %I:%M %p IST") | ⏱ Runtime: $(( $(date +%s) - $START ))s"
 
           echo "message<<EOF" >> $GITHUB_OUTPUT
           echo -e "$SUMMARY" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
-      - name: Calculate runtime
-        id: runtime
-        run: |
-          END=$(date +%s)
-          echo "value=$((END - $START))s" >> $GITHUB_OUTPUT
-
       - name: Send Telegram message
         run: |
           PAYLOAD=$(jq -n \
             --arg chat_id "${{ secrets.CHAT_ID }}" \
-            --arg text "${{ steps.build.outputs.message }}"$'\n\n'"⏱ Runtime: ${{ steps.runtime.outputs.value }}" \
+            --arg text "${{ steps.build.outputs.message }}" \
             --argjson thread_id ${{ secrets.TOPIC_ID }} \
             '{
               chat_id: $chat_id,
