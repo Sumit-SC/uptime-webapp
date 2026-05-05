@@ -1,0 +1,76 @@
+name: Incident Alerts (Issues → Telegram)
+
+on:
+  issues:
+    types: [opened, closed]
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Build message
+        id: build
+        env:
+          INCIDENT_BASE_URL: ${{ secrets.INCIDENT_BASE_URL }}
+        run: |
+          TITLE="${{ github.event.issue.title }}"
+          NUMBER="${{ github.event.issue.number }}"
+          ACTION="${{ github.event.action }}"
+
+          INCIDENT_URL="$INCIDENT_BASE_URL/$NUMBER"
+
+          if [ "$ACTION" = "opened" ]; then
+
+            MSG=$(cat <<EOF
+🛑 INCIDENT DOWN
+
+🌐 $TITLE
+📡 Status: DOWN
+🔗 Incident: $INCIDENT_URL
+EOF
+)
+
+          elif [ "$ACTION" = "closed" ]; then
+
+            MSG=$(cat <<EOF
+✅ INCIDENT RESOLVED
+
+🌐 $TITLE
+📡 Status: UP
+🔗 Incident: $INCIDENT_URL
+EOF
+)
+
+          else
+            echo "skip=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          echo "skip=false" >> $GITHUB_OUTPUT
+
+          echo "msg<<EOF" >> $GITHUB_OUTPUT
+          echo "$MSG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Send Telegram
+        if: steps.build.outputs.skip != 'true'
+        run: |
+          MESSAGE="${{ steps.build.outputs.msg }}
+
+🕒 $(TZ='Asia/Kolkata' date +"%d %b %Y | %I:%M %p IST")"
+
+          PAYLOAD=$(jq -n \
+            --arg chat_id "${{ secrets.CHAT_ID }}" \
+            --arg text "$MESSAGE" \
+            --argjson thread_id ${{ secrets.ALERTS_TOPIC_ID }} \
+            '{
+              chat_id: $chat_id,
+              message_thread_id: $thread_id,
+              text: $text,
+              disable_web_page_preview: false
+            }')
+
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.SUMMARY_BOT_TOKEN }}/sendMessage" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD"
