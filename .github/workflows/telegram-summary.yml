@@ -35,8 +35,9 @@ jobs:
           DOWN=0
           LAT_SUM=0
           LAT_COUNT=0
-          INDEX=1
-          OUTPUT=""
+
+          DOWN_BLOCK=""
+          UP_BLOCK=""
 
           COUNT=$(jq length "$FILE")
 
@@ -91,19 +92,32 @@ jobs:
 
             STATUS_URL="$STATUS_BASE_URL/$SLUG"
 
-            LINE="$INDEX. $ICON $NAME\n"
-            LINE+="   $LAT_LABEL | 📈 $HBAR | ⏱ $UPTIME\n"
-            LINE+="   🔗 $STATUS_URL\n\n"
+            BLOCK="$ICON $NAME\n"
+            BLOCK+="   $LAT_LABEL | 📈 $HBAR | ⏱ $UPTIME\n"
+            BLOCK+="   🔗 $STATUS_URL\n\n"
 
-            # DOWN first
             if [ "$STATUS" = "down" ]; then
-              OUTPUT="$LINE$OUTPUT"
+              DOWN_BLOCK+="$BLOCK"
             else
-              OUTPUT="$OUTPUT$LINE"
+              UP_BLOCK+="$BLOCK"
             fi
-
-            INDEX=$((INDEX+1))
           done
+
+          # combine (DOWN first)
+          COMBINED="$DOWN_BLOCK$UP_BLOCK"
+
+          # apply numbering AFTER ordering
+          INDEX=1
+          OUTPUT=""
+
+          while IFS= read -r line; do
+            if [[ "$line" =~ ^🟢|^🔴 ]]; then
+              OUTPUT+="$INDEX. $line\n"
+              INDEX=$((INDEX+1))
+            else
+              OUTPUT+="$line\n"
+            fi
+          done <<< "$COMBINED"
 
           SUMMARY+="$OUTPUT"
 
@@ -149,7 +163,7 @@ jobs:
         run: |
           PAYLOAD=$(jq -n \
             --arg chat_id "${{ secrets.CHAT_ID }}" \
-            --arg text "${{ steps.build.outputs.message }}\n\n⏱ Runtime: ${{ steps.runtime.outputs.value }}" \
+            --arg text "${{ steps.build.outputs.message }}"$'\n\n'"⏱ Runtime: ${{ steps.runtime.outputs.value }}" \
             --argjson thread_id ${{ secrets.TOPIC_ID }} \
             '{
               chat_id: $chat_id,
