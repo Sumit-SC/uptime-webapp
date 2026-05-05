@@ -1,33 +1,35 @@
-name: Latency Spike Alerts (Smart + Trends)
+name: Latency Spike Alerts (Final Smart System)
 
 on:
   schedule:
     - cron: "*/30 * * * *"
   workflow_dispatch:
+    inputs:
+      debug:
+        description: "Force alerts"
+        required: false
+        default: "false"
 
 jobs:
   latency-check:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Analyze latency
         id: analyze
         env:
           STATUS_BASE_URL: ${{ secrets.STATUS_BASE_URL }}
+          INCIDENT_BASE_URL: ${{ secrets.INCIDENT_BASE_URL }}
+          DEBUG_MODE: ${{ github.event.inputs.debug }}
         run: |
           mkdir -p .cache
-
           FILE="history/summary.json"
-          ALERTS=""
-          TOP_LIST=""
+
+          TMP=$(mktemp)
 
           COUNT=$(jq length "$FILE")
-
-          # temp storage for sorting
-          TMP_FILE=$(mktemp)
 
           for i in $(seq 0 $(($COUNT - 1))); do
             NAME=$(jq -r ".[$i].name" "$FILE")
@@ -42,45 +44,41 @@ jobs:
             CURRENT=$(grep 'responseTime:' "$YML_FILE" | awk '{print $2}')
             [ -z "$CURRENT" ] && continue
 
-            echo "$CURRENT|$NAME|$SLUG" >> $TMP_FILE
-
-            # =============================
-            # 📈 TREND DETECTION
-            # =============================
-            TREND_FILE=".cache/trend_$SLUG"
-            PREV=0
-            [ -f "$TREND_FILE" ] && PREV=$(cat "$TREND_FILE")
-
-            DIFF=$((CURRENT - PREV))
-            echo "$CURRENT" > "$TREND_FILE"
-
-            if [ "$PREV" -ne 0 ] && [ "$DIFF" -gt 500 ]; then
-              ALERTS+="📈 Rising Latency\n"
-              ALERTS+="🌐 $NAME\n"
-              ALERTS+="⚡ $CURRENT ms (+$DIFF)\n"
-              ALERTS+="🔗 $STATUS_BASE_URL/$SLUG\n\n"
-            fi
-
-            # =============================
-            # 🎯 SPIKE CLASSIFICATION
-            # =============================
+            # =========================
+            # 🎯 LATENCY LADDER
+            # =========================
             if [ "$CURRENT" -lt 150 ]; then
-              continue
+              LEVEL="🟢 Normal"
+              ALERT=0
             elif [ "$CURRENT" -lt 500 ]; then
-              continue
+              LEVEL="⚡ Slight"
+              ALERT=0
             elif [ "$CURRENT" -lt 1000 ]; then
-              continue
+              LEVEL="⚠ Moderate"
+              ALERT=0
             elif [ "$CURRENT" -lt 2500 ]; then
-              LEVEL="🚨 High Spike"
+              LEVEL="🚨 High"
+              ALERT=1
             else
-              LEVEL="🛑 Severe Spike"
+              LEVEL="🛑 Severe"
+              ALERT=1
             fi
 
-            # cooldown
-            COOLDOWN_FILE=".cache/alert_$SLUG"
+            # debug override
+            if [ "$DEBUG_MODE" = "true" ]; then
+              ALERT=1
+              LEVEL="🧪 Debug"
+            fi
+
+            [ "$ALERT" -ne 1 ] && continue
+
+            # =========================
+            # ⏳ COOLDOWN
+            # =========================
+            COOLDOWN_FILE=".cache/$SLUG"
             NOW=$(date +%s)
 
-            if [ -f "$COOLDOWN_FILE" ]; then
+            if [ "$DEBUG_MODE" != "true" ] && [ -f "$COOLDOWN_FILE" ]; then
               LAST=$(cat "$COOLDOWN_FILE")
               if [ $((NOW - LAST)) -lt 7200 ]; then
                 continue
@@ -89,44 +87,55 @@ jobs:
 
             echo "$NOW" > "$COOLDOWN_FILE"
 
-            ALERTS+="$LEVEL\n"
-            ALERTS+="🌐 $NAME\n"
-            ALERTS+="⚡ $CURRENT ms\n"
-            ALERTS+="🔗 $STATUS_BASE_URL/$SLUG\n\n"
+            # store for sorting
+            echo "$CURRENT|$LEVEL|$NAME|$SLUG" >> $TMP
 
           done
 
-          # =============================
-          # 🏆 TOP 3 SLOWEST SERVICES
-          # =============================
-          TOP3=$(sort -nr $TMP_FILE | head -n 3)
+          # =========================
+          # 🏆 SORT + TOP N
+          # =========================
+          SORTED=$(sort -nr $TMP)
 
-          if [ -n "$TOP3" ]; then
-            TOP_LIST="🏆 Top Slowest Services\n\n"
+          TOTAL_ALERTS=$(echo "$SORTED" | wc -l)
 
-            while IFS="|" read -r LAT NAME SLUG; do
-              TOP_LIST+="🌐 $NAME\n⚡ $LAT ms\n\n"
-            done <<< "$TOP3"
-          fi
-
-          FINAL_MSG=""
-
-          [ -n "$ALERTS" ] && FINAL_MSG+="🚨 Alerts\n\n$ALERTS"
-          [ -n "$TOP_LIST" ] && FINAL_MSG+="━━━━━━━━━━━━━━━━━━\n\n$TOP_LIST"
-
-          if [ -n "$FINAL_MSG" ]; then
-            echo "alert=true" >> $GITHUB_OUTPUT
-            echo "msg<<EOF" >> $GITHUB_OUTPUT
-            echo -e "$FINAL_MSG" >> $GITHUB_OUTPUT
-            echo "EOF" >> $GITHUB_OUTPUT
+          if [ "$TOTAL_ALERTS" -gt 3 ]; then
+            FINAL=$(echo "$SORTED" | head -n 3)
           else
-            echo "alert=false" >> $GITHUB_OUTPUT
+            FINAL="$SORTED"
           fi
+
+          # =========================
+          # 📦 BUILD MESSAGE
+          # =========================
+          MSG="🚨 Latency Alerts\n\n"
+
+          INDEX=1
+          while IFS="|" read -r LAT LEVEL NAME SLUG; do
+            [ -z "$LAT" ] && continue
+
+            MSG+="$INDEX. $LEVEL\n"
+            MSG+="🌐 $NAME\n"
+            MSG+="⚡ $LAT ms\n"
+            MSG+="🔗 $STATUS_BASE_URL/$SLUG\n\n"
+
+            INDEX=$((INDEX+1))
+          done <<< "$FINAL"
+
+          if [ "$INDEX" -eq 1 ]; then
+            echo "alert=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          echo "alert=true" >> $GITHUB_OUTPUT
+          echo "msg<<EOF" >> $GITHUB_OUTPUT
+          echo -e "$MSG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Send Telegram
         if: steps.analyze.outputs.alert == 'true'
         run: |
-          MESSAGE="${{ steps.analyze.outputs.msg }}\n 🕒 $(TZ='Asia/Kolkata' date +"%d %b %Y | %I:%M %p IST")"
+          MESSAGE="${{ steps.analyze.outputs.msg }}\n🕒 $(TZ='Asia/Kolkata' date +"%d %b %Y | %I:%M %p IST")"
 
           PAYLOAD=$(jq -n \
             --arg chat_id "${{ secrets.CHAT_ID }}" \
