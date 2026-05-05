@@ -32,6 +32,8 @@ sites:
   #   # Offline Site to test for outage alert-checks
   - name: Shopping
     url: https//Shopping.com
+  - name: test
+    url: https://example.koj.co
 
 status-website:
   # 1. Your custom domain
