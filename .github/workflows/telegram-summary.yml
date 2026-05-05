@@ -12,6 +12,10 @@ jobs:
   summary:
     runs-on: ubuntu-latest
 
+    env:
+      DASHBOARD_URL: ${{ secrets.DASHBOARD_URL }}
+      STATUS_BASE_URL: ${{ secrets.STATUS_BASE_URL }}
+
     steps:
       - name: Start timer
         run: echo "START=$(date +%s)" >> $GITHUB_ENV
@@ -22,10 +26,8 @@ jobs:
       - name: Build summary
         id: build
         run: |
-          REPO_URL="https://sumit.indevs.in/ping"
-
           SUMMARY="📊 Uptime Summary\n"
-          SUMMARY+="🔗 Dashboard: $REPO_URL\n\n"
+          SUMMARY+="🔗 Dashboard: $DASHBOARD_URL\n\n"
 
           FILE="history/summary.json"
 
@@ -33,6 +35,7 @@ jobs:
           DOWN=0
           LAT_SUM=0
           LAT_COUNT=0
+          INDEX=1
 
           OUTPUT=""
 
@@ -75,22 +78,36 @@ jobs:
               LAT_LABEL="—"
             fi
 
-            STATUS_URL="https://status.sumit.indevs.in/history/$SLUG"
+            # health bar
+            UP_NUM=$(echo "$UPTIME" | sed 's/%//g' | cut -d'.' -f1)
 
-            LINE="$ICON $NAME\n   $LAT_LABEL | Uptime: $UPTIME\n   🔗 $STATUS_URL\n\n"
+            FILLED=$((UP_NUM / 20))
+            EMPTY=$((5 - FILLED))
 
-            # PRIORITIZE DOWN sites
+            HBAR=""
+            for j in $(seq 1 $FILLED); do HBAR+="🟩"; done
+            for j in $(seq 1 $EMPTY); do HBAR+="⬜"; done
+
+            STATUS_URL="$STATUS_BASE_URL/$SLUG"
+
+            LINE="$INDEX. $ICON $NAME\n"
+            LINE+="   $LAT_LABEL\n"
+            LINE+="   📈 $HBAR $UPTIME\n"
+            LINE+="   🔗 $STATUS_URL\n\n"
+
+            # prioritize DOWN
             if [ "$STATUS" = "down" ]; then
               OUTPUT="$LINE$OUTPUT"
             else
               OUTPUT="$OUTPUT$LINE"
             fi
 
+            INDEX=$((INDEX+1))
           done
 
           SUMMARY+="$OUTPUT"
 
-          # metrics
+          # overall metrics
           UP=$((TOTAL - DOWN))
 
           if [ "$TOTAL" -gt 0 ]; then
@@ -105,7 +122,6 @@ jobs:
             AVG_LAT=0
           fi
 
-          # health bar
           FILLED=$((HEALTH / 20))
           EMPTY=$((5 - FILLED))
 
