@@ -1,4 +1,4 @@
-name: Latency Spike Alerts
+name: Latency Spike Alerts (Smart)
 
 on:
   schedule:
@@ -15,7 +15,11 @@ jobs:
 
       - name: Analyze latency
         id: analyze
+        env:
+          STATUS_BASE_URL: ${{ secrets.STATUS_BASE_URL }}
         run: |
+          mkdir -p .cache
+
           FILE="history/summary.json"
           ALERTS=""
 
@@ -32,23 +36,59 @@ jobs:
             [ ! -f "$YML_FILE" ] && continue
 
             CURRENT=$(grep 'responseTime:' "$YML_FILE" | awk '{print $2}')
+            [ -z "$CURRENT" ] && continue
 
-            # ===== Simple Spike Logic =====
-            if [ "$CURRENT" -gt 1 ]; then
-
-              ALERTS+="🚨 High Latency Detected\n"
-              ALERTS+="🌐 $NAME\n"
-              ALERTS+="⚡ $CURRENT ms\n"
-              ALERTS+="🔗 https://status.sumit.indevs.in/history/$SLUG\n\n"
-
+            # =============================
+            # 🎯 LATENCY CLASSIFICATION
+            # =============================
+            if [ "$CURRENT" -lt 150 ]; then
+              LEVEL="🟢 Normal"
+              ALERT=0
+            elif [ "$CURRENT" -lt 500 ]; then
+              LEVEL="⚡ Slight Delay"
+              ALERT=0
+            elif [ "$CURRENT" -lt 1000 ]; then
+              LEVEL="⚠ Moderate"
+              ALERT=0
+            elif [ "$CURRENT" -lt 2500 ]; then
+              LEVEL="🚨 High Spike"
+              ALERT=1
+            else
+              LEVEL="🛑 Severe Spike"
+              ALERT=1
             fi
+
+            [ "$ALERT" -ne 1 ] && continue
+
+            # =============================
+            # ⏳ COOLDOWN (2 HOURS)
+            # =============================
+            COOLDOWN_FILE=".cache/alert_$SLUG"
+            NOW=$(date +%s)
+
+            if [ -f "$COOLDOWN_FILE" ]; then
+              LAST=$(cat "$COOLDOWN_FILE")
+              if [ $((NOW - LAST)) -lt 7200 ]; then
+                continue
+              fi
+            fi
+
+            echo "$NOW" > "$COOLDOWN_FILE"
+
+            # =============================
+            # 📦 BUILD MESSAGE
+            # =============================
+            ALERTS+="$LEVEL\n"
+            ALERTS+="🌐 $NAME\n"
+            ALERTS+="⚡ $CURRENT ms\n"
+            ALERTS+="🔗 $STATUS_BASE_URL/$SLUG\n\n"
 
           done
 
           if [ -n "$ALERTS" ]; then
             echo "alert=true" >> $GITHUB_OUTPUT
             echo "msg<<EOF" >> $GITHUB_OUTPUT
-            echo -e "$ALERTS" >> $GITHUB_OUTPUT
+            echo -e "🚨 Latency Alert\n\n$ALERTS" >> $GITHUB_OUTPUT
             echo "EOF" >> $GITHUB_OUTPUT
           else
             echo "alert=false" >> $GITHUB_OUTPUT
