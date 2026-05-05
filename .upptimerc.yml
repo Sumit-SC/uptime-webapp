@@ -30,8 +30,8 @@ sites:
   - name: Wikipedia
     url: https://en.wikipedia.org
   #   # Offline Site to test for outage alert-checks
-  # - name: Shopping
-  #   url: https//Shopping.com
+  - name: Shopping
+    url: https//Shopping.com
 
 status-website:
   # 1. Your custom domain
@@ -81,5 +81,7 @@ status-website:
 notifications:
   - type: telegram
     # If the secret-only method fails, you can try this format
-    chatId: -1002414692810 
-    messageThreadId: 1976
+    token: "$NOTIFICATION_TELEGRAM_TOKEN"
+    chatId: "$NOTIFICATION_TELEGRAM_CHAT_ID"
+    # chatId: -1002414692810 
+    # messageThreadId: 1976
