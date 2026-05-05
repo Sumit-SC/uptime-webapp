@@ -40,7 +40,7 @@ jobs:
 
           COUNT=$(jq length "$FILE")
 
-          # ===== Collect latencies =====
+          # ===== Collect latency range =====
           LAT_ARRAY=()
 
           for i in $(seq 0 $(($COUNT - 1))); do
@@ -69,7 +69,6 @@ jobs:
           LAT_SUM=0
           LAT_COUNT=0
 
-          # ===== Build blocks =====
           for i in $(seq 0 $(($COUNT - 1))); do
             NAME=$(jq -r ".[$i].name" "$FILE")
             STATUS=$(jq -r ".[$i].status" "$FILE")
@@ -85,7 +84,6 @@ jobs:
               DOWN=$((DOWN+1))
             fi
 
-            # latency
             YML_FILE="history/$SLUG.yml"
             LATENCY=""
 
@@ -107,7 +105,7 @@ jobs:
               LAT_LABEL="—"
             fi
 
-            # ===== Health bar =====
+            # ===== Health Bar =====
             UP_NUM=$(echo "$UPTIME" | grep -o '[0-9]*' | head -1)
             UP_NUM=${UP_NUM:-0}
 
@@ -144,13 +142,20 @@ jobs:
             INDEX=$((INDEX+1))
           done
 
-          # combine DOWN first
           SUMMARY+="$DOWN_BLOCK$UP_BLOCK"
 
           # ===== Overall metrics =====
           UP=$((TOTAL - DOWN))
           HEALTH=$(( TOTAL > 0 ? UP * 100 / TOTAL : 0 ))
           AVG_LAT=$(( LAT_COUNT > 0 ? LAT_SUM / LAT_COUNT : 0 ))
+
+          # ✅ FIX: Absolute latency emoji mapping
+          if [ "$AVG_LAT" -lt 200 ]; then LAT_ICON="⚡"
+          elif [ "$AVG_LAT" -lt 500 ]; then LAT_ICON="🚀"
+          elif [ "$AVG_LAT" -lt 1000 ]; then LAT_ICON="🚗"
+          elif [ "$AVG_LAT" -lt 2000 ]; then LAT_ICON="🐢"
+          else LAT_ICON="🐌"
+          fi
 
           FILLED=$((HEALTH / 20))
           EMPTY=$((5 - FILLED))
@@ -168,7 +173,7 @@ jobs:
 
           SUMMARY+="━━━━━━━━━━━━━━━━━━\n\n"
           SUMMARY+="📈 Health: $BAR $HEALTH%\n"
-          SUMMARY+="⚡ Avg Latency: $AVG_LAT ms\n"
+          SUMMARY+="⚡ Avg Latency: $LAT_ICON $AVG_LAT ms\n"
           SUMMARY+="🔴 Down: $DOWN / $TOTAL\n\n"
           SUMMARY+="🕒 $(TZ='Asia/Kolkata' date +"%d %b %Y | %I:%M %p IST") | ⏱ Runtime: $(( $(date +%s) - $START ))s"
 
