@@ -30,10 +30,10 @@ sites:
   - name: Wikipedia
     url: https://en.wikipedia.org
   #   # Offline Site to test for outage alert-checks
-  # - name: Shopping
-  #   url: https//Shopping.com
-  # - name: test
-  #   url: https://example.koj.co
+  - name: Shopping
+    url: https//Shopping.com
+  - name: test
+    url: https://example.koj.co
   - name: my-web
     url: test.com
   - name: Streamio
@@ -82,32 +82,3 @@ status-website:
 # Advanced monitoring frequency (optional)
 # commitMessages:
 # readmeTick: ":green_heart: Update uptime [skip ci]"
-
-# Add this at the bottom
-# notifications:
-#   - type: telegram
-#     # If the secret-only method fails, you can try this format
-#     token: "$NOTIFICATION_TELEGRAM_TOKEN"
-#     chatId: "$NOTIFICATION_TELEGRAM_CHAT_ID"
-
-# notifications:
-#   - type: webhook
-#     url: "https://telegram.org"
-#     method: "POST"
-#     headers:
-#       - "Content-Type: application/json"
-#     body: '{"chat_id": "$CHAT_ID", "message_thread_id": $TOPIC_ID, "text": "$TEXT"}'
-
-
-# notifications:
-#   - type: webhook
-#     url: "https://api.telegram.org/bot$BOT_TOKEN/sendMessage"
-#     method: "POST"
-#     headers:
-#       Content-Type: "application/json"
-#     body: |
-#       {
-#         "chat_id": "$CHAT_ID",
-#         "message_thread_id": $TOPIC_ID,
-#         "text": "$TEXT"
-#       }
