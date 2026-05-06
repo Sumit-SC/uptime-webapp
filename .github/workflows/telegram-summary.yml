@@ -2,10 +2,7 @@ name: Telegram Uptime Summary
 
 on:
   schedule:
-    - cron: "30 2 * * *"
-  push:
-    paths:
-      - "history/*"
+    - cron: "0 3 * * *"   # 02:30 UTC = 08:00 IST
   workflow_dispatch:
 
 jobs:
@@ -15,6 +12,7 @@ jobs:
     env:
       DASHBOARD_URL: ${{ secrets.DASHBOARD_URL }}
       STATUS_BASE_URL: ${{ secrets.STATUS_BASE_URL }}
+      SUMMARY_TIMEZONE: ${{ secrets.SUMMARY_TIMEZONE }}
 
     steps:
       - name: Start timer
@@ -40,36 +38,11 @@ jobs:
 
           COUNT=$(jq length "$FILE")
 
-          # ===== Collect latency range =====
-          LAT_ARRAY=()
-
-          for i in $(seq 0 $(($COUNT - 1))); do
-            SLUG=$(jq -r ".[$i].slug" "$FILE")
-            YML_FILE="history/$SLUG.yml"
-
-            if [ -f "$YML_FILE" ]; then
-              LAT=$(grep 'responseTime:' "$YML_FILE" | awk '{print $2}')
-              [[ -n "$LAT" ]] && LAT_ARRAY+=("$LAT")
-            fi
-          done
-
-          MIN_LAT=999999
-          MAX_LAT=0
-
-          for L in "${LAT_ARRAY[@]}"; do
-            (( L < MIN_LAT )) && MIN_LAT=$L
-            (( L > MAX_LAT )) && MAX_LAT=$L
-          done
-
-          RANGE=$((MAX_LAT - MIN_LAT))
-          [ "$RANGE" -eq 0 ] && RANGE=1
-
-          EMOJIS=(⚡ 🚀 ✈️ 🏎️ 🚄 🚗 🏇 🚲 🏃 🐢 🐌)
-
           LAT_SUM=0
           LAT_COUNT=0
 
           for i in $(seq 0 $(($COUNT - 1))); do
+
             NAME=$(jq -r ".[$i].name" "$FILE")
             STATUS=$(jq -r ".[$i].status" "$FILE")
             UPTIME=$(jq -r ".[$i].uptime" "$FILE")
@@ -84,6 +57,10 @@ jobs:
               DOWN=$((DOWN+1))
             fi
 
+            # =========================
+            # LATENCY
+            # =========================
+
             YML_FILE="history/$SLUG.yml"
             LATENCY=""
 
@@ -92,20 +69,42 @@ jobs:
             fi
 
             if [ "$STATUS" = "down" ]; then
-              LAT_LABEL="🛑 🚨 DOWN"
+
+              LAT_LABEL="🛑 DOWN"
+
             elif [ -n "$LATENCY" ]; then
+
               LAT_SUM=$((LAT_SUM + LATENCY))
               LAT_COUNT=$((LAT_COUNT + 1))
 
-              POS=$(( (LATENCY - MIN_LAT) * 10 / RANGE ))
-              EMOJI=${EMOJIS[$POS]}
+              if [ "$LATENCY" -lt 100 ]; then
+                EMOJI="⚡"
+              elif [ "$LATENCY" -lt 250 ]; then
+                EMOJI="🚀"
+              elif [ "$LATENCY" -lt 500 ]; then
+                EMOJI="✈️"
+              elif [ "$LATENCY" -lt 750 ]; then
+                EMOJI="🏎️"
+              elif [ "$LATENCY" -lt 1000 ]; then
+                EMOJI="🚗"
+              elif [ "$LATENCY" -lt 1500 ]; then
+                EMOJI="🏇"
+              elif [ "$LATENCY" -lt 2000 ]; then
+                EMOJI="🐢"
+              else
+                EMOJI="🐌"
+              fi
 
               LAT_LABEL="$EMOJI $LATENCY ms"
+
             else
               LAT_LABEL="—"
             fi
 
-            # ===== Health Bar =====
+            # =========================
+            # HEALTH BAR
+            # =========================
+
             UP_NUM=$(echo "$UPTIME" | grep -o '[0-9]*' | head -1)
             UP_NUM=${UP_NUM:-0}
 
@@ -113,18 +112,32 @@ jobs:
             EMPTY=$((5 - FILLED))
 
             if [ "$STATUS" = "down" ]; then
+
               HBAR="🟥🟥🟥🟥🟥"
+
             else
-              if [ "$UP_NUM" -ge 100 ]; then COLOR="🟩"
-              elif [ "$UP_NUM" -ge 80 ]; then COLOR="🟦"
-              elif [ "$UP_NUM" -ge 60 ]; then COLOR="🟨"
-              elif [ "$UP_NUM" -ge 40 ]; then COLOR="🟧"
-              else COLOR="🟥"
+
+              if [ "$UP_NUM" -ge 100 ]; then
+                COLOR="🟩"
+              elif [ "$UP_NUM" -ge 80 ]; then
+                COLOR="🟦"
+              elif [ "$UP_NUM" -ge 60 ]; then
+                COLOR="🟨"
+              elif [ "$UP_NUM" -ge 40 ]; then
+                COLOR="🟧"
+              else
+                COLOR="🟥"
               fi
 
               HBAR=""
-              for j in $(seq 1 $FILLED); do HBAR+="$COLOR"; done
-              for j in $(seq 1 $EMPTY); do HBAR+="⬜"; done
+
+              for j in $(seq 1 $FILLED); do
+                HBAR+="$COLOR"
+              done
+
+              for j in $(seq 1 $EMPTY); do
+                HBAR+="⬜"
+              done
             fi
 
             STATUS_URL="$STATUS_BASE_URL/$SLUG"
@@ -140,47 +153,83 @@ jobs:
             fi
 
             INDEX=$((INDEX+1))
+
           done
 
           SUMMARY+="$DOWN_BLOCK$UP_BLOCK"
 
-          # ===== Overall metrics =====
-          UP=$((TOTAL - DOWN))
-          HEALTH=$(( TOTAL > 0 ? UP * 100 / TOTAL : 0 ))
-          AVG_LAT=$(( LAT_COUNT > 0 ? LAT_SUM / LAT_COUNT : 0 ))
+          # =========================
+          # OVERALL METRICS
+          # =========================
 
-          # ✅ FIX: Absolute latency emoji mapping
-          if [ "$AVG_LAT" -lt 100 ]; then LAT_ICON="⚡"
-          elif [ "$AVG_LAT" -lt 250 ]; then LAT_ICON="🚀"
-          elif [ "$AVG_LAT" -lt 500 ]; then LAT_ICON="✈️"
-          elif [ "$AVG_LAT" -lt 750 ]; then LAT_ICON="🏎️"
-          elif [ "$AVG_LAT" -lt 1000 ]; then LAT_ICON="🚗"
-          elif [ "$AVG_LAT" -lt 1250 ]; then LAT_ICON="🏇"
-          elif [ "$AVG_LAT" -lt 1500 ]; then LAT_ICON="🚴‍♂️""⚡"
-          elif [ "$AVG_LAT" -lt 1750 ]; then LAT_ICON="🏃"
-          elif [ "$AVG_LAT" -lt 2000 ]; then LAT_ICON="🐢"
-          else LAT_ICON="🐌"
+          UP=$((TOTAL - DOWN))
+
+          if [ "$TOTAL" -gt 0 ]; then
+            HEALTH=$((UP * 100 / TOTAL))
+          else
+            HEALTH=0
+          fi
+
+          if [ "$LAT_COUNT" -gt 0 ]; then
+            AVG_LAT=$((LAT_SUM / LAT_COUNT))
+          else
+            AVG_LAT=0
+          fi
+
+          if [ "$AVG_LAT" -lt 100 ]; then
+            LAT_ICON="⚡"
+          elif [ "$AVG_LAT" -lt 250 ]; then
+            LAT_ICON="🚀"
+          elif [ "$AVG_LAT" -lt 500 ]; then
+            LAT_ICON="✈️"
+          elif [ "$AVG_LAT" -lt 750 ]; then
+            LAT_ICON="🏎️"
+          elif [ "$AVG_LAT" -lt 1000 ]; then
+            LAT_ICON="🚗"
+          elif [ "$AVG_LAT" -lt 1500 ]; then
+            LAT_ICON="🏇"
+          elif [ "$AVG_LAT" -lt 2000 ]; then
+            LAT_ICON="🐢"
+          else
+            LAT_ICON="🐌"
           fi
 
           FILLED=$((HEALTH / 20))
           EMPTY=$((5 - FILLED))
 
-          if [ "$HEALTH" -ge 100 ]; then COLOR="🟩"
-          elif [ "$HEALTH" -ge 80 ]; then COLOR="🟦"
-          elif [ "$HEALTH" -ge 60 ]; then COLOR="🟨"
-          elif [ "$HEALTH" -ge 40 ]; then COLOR="🟧"
-          else COLOR="🟥"
+          if [ "$HEALTH" -ge 100 ]; then
+            COLOR="🟩"
+          elif [ "$HEALTH" -ge 80 ]; then
+            COLOR="🟦"
+          elif [ "$HEALTH" -ge 60 ]; then
+            COLOR="🟨"
+          elif [ "$HEALTH" -ge 40 ]; then
+            COLOR="🟧"
+          else
+            COLOR="🟥"
           fi
 
           BAR=""
-          for i in $(seq 1 $FILLED); do BAR+="$COLOR"; done
-          for i in $(seq 1 $EMPTY); do BAR+="⬜"; done
+
+          for i in $(seq 1 $FILLED); do
+            BAR+="$COLOR"
+          done
+
+          for i in $(seq 1 $EMPTY); do
+            BAR+="⬜"
+          done
+
+          LOCAL_TIME=$(TZ="$SUMMARY_TIMEZONE" date +"%d %b %Y | %I:%M %p %Z")
+          UTC_TIME=$(TZ="UTC" date +"%H:%M UTC")
 
           SUMMARY+="━━━━━━━━━━━━━━━━━━\n\n"
           SUMMARY+="📈 Health: $BAR $HEALTH%\n"
           SUMMARY+="⚡ Avg Latency: $LAT_ICON $AVG_LAT ms\n"
           SUMMARY+="🔴 Down: $DOWN / $TOTAL\n\n"
-          SUMMARY+="🕒 $(TZ='Asia/Kolkata' date +"%d %b %Y | %I:%M %p IST") | 📃⏱ $(( $(date +%s) - $START ))s"
+
+          SUMMARY+="🕒 $LOCAL_TIME\n"
+          SUMMARY+="🌍 $UTC_TIME\n"
+          SUMMARY+="⏱ Runtime: $(( $(date +%s) - $START ))s"
 
           echo "message<<EOF" >> $GITHUB_OUTPUT
           echo -e "$SUMMARY" >> $GITHUB_OUTPUT
