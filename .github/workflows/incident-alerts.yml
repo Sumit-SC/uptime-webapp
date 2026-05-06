@@ -8,9 +8,16 @@
 # ✅ Service outages
 # ✅ Service recovery
 # ✅ Incident metrics
-# ✅ Weekly incident reports
+# ✅ MTTR tracking
+# ✅ flapping detection
+# ✅ jitter / instability analysis
+# ✅ weekly analytics reporting
 #
 # Built around Upptime issue lifecycle.
+#
+# ==========================================
+# ARCHITECTURE
+# ==========================================
 #
 # Architecture:
 #
@@ -26,7 +33,9 @@
 # - MTTR tracking
 # - incident analytics
 # - recovery summaries
-# - reporting
+# - degradation analysis
+# - weekly reporting
+# - persistent metrics
 #
 # ==========================================
 # REQUIRED GITHUB SECRETS
@@ -96,6 +105,19 @@
 # While the Incdient alert is triggered as issue 
 # gets posted automatically and not cron based.
 #
+#
+# ==========================================
+# IMPORTANT NOTES
+# ==========================================
+#
+# 1. Scheduled workflows ONLY run on the
+#    repository DEFAULT branch.
+#
+# 2. GitHub cron may delay several minutes.
+#
+# 3. Workflow uses concurrency locking to
+#    avoid metrics corruption.
+#
 # ==========================================
 # STATE FILES
 # ==========================================
@@ -107,6 +129,9 @@
 # - total downtime
 # - MTTR values
 # - historical metrics
+# - weekly metrics
+# - flap counters
+# - active state
 #
 # This file persists across workflow runs.
 #
@@ -130,20 +155,20 @@
 # Actual Working Code ⬇️
 # ==========================================
 
-name: Advanced Incident Alerts
+name: Advanced Incident Observability
+
+# ==========================================
+# Prevent simultaneous writes
+# ==========================================
+
+concurrency:
+  group: incident-observability
+  cancel-in-progress: false
 
 on:
 
   # ========================================
-  # Upptime issue lifecycle
-  # ========================================
-  #
-  # opened = outage detected
-  # closed = recovery detected
-  #
-  # Event-driven architecture is preferred
-  # over polling because Upptime already
-  # handles monitoring internally.
+  # Event-driven monitoring
   # ========================================
 
   issues:
@@ -152,14 +177,15 @@ on:
       - closed
 
   # ========================================
-  # Weekly incident analytics report
+  # Weekly analytics report
+  # Monday 03:00 UTC
   # ========================================
 
   schedule:
     - cron: "0 3 * * 1"
 
   # ========================================
-  # Manual workflow trigger
+  # Manual trigger
   # ========================================
 
   workflow_dispatch:
@@ -167,7 +193,7 @@ on:
 jobs:
 
   # ========================================
-  # INCIDENT / RECOVERY ALERTS
+  # INCIDENT ALERTS
   # ========================================
 
   incident-alert:
@@ -179,41 +205,32 @@ jobs:
     steps:
 
       # ====================================
-      # Checkout repository
+      # Checkout repo
       # ====================================
 
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       # ====================================
-      # Initialize metrics state file
-      # ====================================
-      #
-      # Stores:
-      # - incidents count
-      # - cumulative downtime
-      # - MTTR values
-      #
-      # Prevents metrics loss between runs.
+      # Initialize metrics DB
       # ====================================
 
-      - name: Initialize incident state
+      - name: Initialize metrics
         run: |
+
           mkdir -p history
 
           if [ ! -f history/incident-metrics.json ]; then
-            echo '{}' > history/incident-metrics.json
+            echo "{}" > history/incident-metrics.json
           fi
 
       # ====================================
-      # Filter only Upptime incidents
-      # ====================================
-      #
-      # Prevents unrelated GitHub issues
-      # from triggering Telegram alerts.
+      # Filter Upptime issues only
       # ====================================
 
       - name: Filter issues
         id: filter
+
         run: |
 
           TITLE="${{ github.event.issue.title }}"
@@ -229,18 +246,10 @@ jobs:
         run: exit 0
 
       # ====================================
-      # Build incident message
-      # ====================================
-      #
-      # Handles:
-      # - incident parsing
-      # - latency analysis
-      # - MTTR calculations
-      # - severity classification
-      # - Telegram formatting
+      # Build alert
       # ====================================
 
-      - name: Build incident message
+      - name: Build incident alert
         id: build
 
         env:
@@ -260,20 +269,20 @@ jobs:
           INCIDENT_URL="$INCIDENT_BASE_URL/$NUMBER"
 
           FILE="history/summary.json"
-          METRICS_FILE="history/incident-metrics.json"
+          DB="history/incident-metrics.json"
 
           # ==================================
-          # Clean site name from issue title
+          # Clean site name
           # ==================================
 
           SITE=$(echo "$TITLE" \
             | sed -E 's/\[.*\]//g' \
-            | sed -E 's/^🟥 //; s/^🟩 //' \
+            | sed -E 's/^[^[:alnum:]]+//' \
             | sed -E 's/ is down.*//; s/ is up.*//' \
             | xargs)
 
           # ==================================
-          # Match site slug from summary.json
+          # Lookup slug
           # ==================================
 
           SLUG=$(jq -r \
@@ -281,12 +290,18 @@ jobs:
             '.[] | select(.name == $site) | .slug' \
             "$FILE")
 
-          [ -z "$SLUG" ] && SLUG="unknown"
+          if [ -z "$SLUG" ] || [ "$SLUG" = "null" ]; then
+
+            SLUG=$(echo "$SITE" \
+              | tr '[:upper:]' '[:lower:]' \
+              | sed 's/ /-/g')
+
+          fi
 
           STATUS_URL="$STATUS_BASE_URL/$SLUG"
 
           # ==================================
-          # Read latest latency snapshot
+          # Read latest latency
           # ==================================
 
           YML_FILE="history/$SLUG.yml"
@@ -298,19 +313,7 @@ jobs:
           fi
 
           # ==================================
-          # Latency speed ladder
-          # ==================================
-          #
-          # Represents user experience feel.
-          #
-          # ⚡ Instant
-          # 🚀 Fast
-          # ✈️ Good
-          # 🏎️ Responsive
-          # 🚗 Moderate
-          # 🏇 Slower
-          # 🐢 Very slow
-          # 🐌 Critical
+          # Speed ladder
           # ==================================
 
           if [[ "$LATENCY" =~ ^[0-9]+$ ]]; then
@@ -334,11 +337,13 @@ jobs:
             fi
 
           else
+
             SPEED="⚠"
+
           fi
 
           # ==================================
-          # Current uptime snapshot
+          # Uptime snapshot
           # ==================================
 
           UPTIME=$(jq -r \
@@ -346,8 +351,12 @@ jobs:
             '.[] | select(.name == $site) | .uptime' \
             "$FILE")
 
+          if [ -z "$UPTIME" ] || [ "$UPTIME" = "null" ]; then
+            UPTIME="Unknown"
+          fi
+
           # ==================================
-          # Downtime duration calculation
+          # Downtime duration
           # ==================================
 
           DIFF=0
@@ -372,49 +381,14 @@ jobs:
           fi
 
           # ==================================
-          # Severity classification
-          # ==================================
-          #
-          # Based on:
-          # - latency
-          # - downtime duration
-          # ==================================
-
-          if [ "$ACTION" = "opened" ]; then
-
-            if [[ "$LATENCY" =~ ^[0-9]+$ ]]; then
-
-              if [ "$LATENCY" -lt 1000 ]; then
-                SEVERITY="⚠ Minor Incident"
-              elif [ "$LATENCY" -lt 2500 ]; then
-                SEVERITY="🚨 Major Incident"
-              else
-                SEVERITY="🛑 Critical Incident"
-              fi
-
-            else
-              SEVERITY="🛑 Critical Incident"
-            fi
-
-          else
-
-            if [ "$DIFF" -lt 900 ]; then
-              SEVERITY="⚠ Minor Recovery"
-            elif [ "$DIFF" -lt 3600 ]; then
-              SEVERITY="🚨 Major Recovery"
-            else
-              SEVERITY="🛑 Critical Recovery"
-            fi
-
-          fi
-
-          # ==================================
-          # Jitter / degradation indicator
+          # Jitter / instability
           # ==================================
 
           JITTER="Stable"
 
           if [[ "$LATENCY" =~ ^[0-9]+$ ]]; then
+
+            AVG=$((LATENCY))
 
             if [ "$LATENCY" -gt 2000 ]; then
               JITTER="High instability"
@@ -427,29 +401,98 @@ jobs:
           fi
 
           # ==================================
-          # MTTR + incident tracking
+          # Severity escalation
           # ==================================
-          #
-          # MTTR:
-          # Mean Time To Recovery
-          #
-          # Used for operational reliability
-          # tracking.
+
+          if [ "$ACTION" = "opened" ]; then
+
+            SEVERITY="⚠ Minor Incident"
+
+            if [[ "$LATENCY" =~ ^[0-9]+$ ]]; then
+
+              if [ "$LATENCY" -gt 2500 ]; then
+                SEVERITY="🛑 Critical Incident"
+              elif [ "$LATENCY" -gt 1000 ]; then
+                SEVERITY="🚨 Major Incident"
+              fi
+
+            else
+
+              SEVERITY="🛑 Critical Incident"
+
+            fi
+
+          else
+
+            SEVERITY="✅ Recovery"
+
+            if [ "$DIFF" -gt 3600 ]; then
+              SEVERITY="🛑 Critical Recovery"
+            elif [ "$DIFF" -gt 900 ]; then
+              SEVERITY="🚨 Major Recovery"
+            fi
+
+          fi
+
+          # ==================================
+          # Persistent metrics
           # ==================================
 
           INCIDENTS=$(jq -r \
             --arg slug "$SLUG" \
             '.[$slug].incidents // 0' \
-            "$METRICS_FILE")
+            "$DB")
+
+          WEEKLY=$(jq -r \
+            --arg slug "$SLUG" \
+            '.[$slug].weekly // 0' \
+            "$DB")
+
+          FLAPS=$(jq -r \
+            --arg slug "$SLUG" \
+            '.[$slug].flaps // 0' \
+            "$DB")
 
           TOTAL_DOWNTIME=$(jq -r \
             --arg slug "$SLUG" \
             '.[$slug].downtime // 0' \
-            "$METRICS_FILE")
+            "$DB")
+
+          ACTIVE=$(jq -r \
+            --arg slug "$SLUG" \
+            '.[$slug].active // false' \
+            "$DB")
+
+          # ==================================
+          # Flapping detection
+          # ==================================
+
+          LAST_INCIDENT=$(jq -r \
+            --arg slug "$SLUG" \
+            '.[$slug].last_incident // 0' \
+            "$DB")
+
+          NOW=$(date +%s)
+
+          if [ "$LAST_INCIDENT" -gt 0 ]; then
+
+            GAP=$((NOW - LAST_INCIDENT))
+
+            if [ "$GAP" -lt 7200 ]; then
+              FLAPS=$((FLAPS + 1))
+            fi
+
+          fi
+
+          # ==================================
+          # Update metrics on recovery
+          # ==================================
 
           if [ "$ACTION" = "closed" ]; then
 
             INCIDENTS=$((INCIDENTS + 1))
+            WEEKLY=$((WEEKLY + 1))
+
             TOTAL_DOWNTIME=$((TOTAL_DOWNTIME + DIFF))
 
             MTTR=$((TOTAL_DOWNTIME / INCIDENTS))
@@ -457,30 +500,60 @@ jobs:
             jq \
               --arg slug "$SLUG" \
               --argjson incidents "$INCIDENTS" \
+              --argjson weekly "$WEEKLY" \
+              --argjson flaps "$FLAPS" \
               --argjson downtime "$TOTAL_DOWNTIME" \
               --argjson mttr "$MTTR" \
+              --argjson now "$NOW" \
               '.[$slug].incidents = $incidents |
+               .[$slug].weekly = $weekly |
+               .[$slug].flaps = $flaps |
                .[$slug].downtime = $downtime |
-               .[$slug].mttr = $mttr' \
-              "$METRICS_FILE" > tmp.json && mv tmp.json "$METRICS_FILE"
+               .[$slug].mttr = $mttr |
+               .[$slug].active = false |
+               .[$slug].last_incident = $now' \
+              "$DB" > tmp.json && mv tmp.json "$DB"
 
           else
 
             MTTR=$(jq -r \
               --arg slug "$SLUG" \
               '.[$slug].mttr // 0' \
-              "$METRICS_FILE")
+              "$DB")
+
+            jq \
+              --arg slug "$SLUG" \
+              --argjson now "$NOW" \
+              '.[$slug].active = true |
+               .[$slug].last_incident = $now' \
+              "$DB" > tmp.json && mv tmp.json "$DB"
 
           fi
-
-          # ==================================
-          # Human-readable MTTR
-          # ==================================
 
           MTTR_MIN=$((MTTR / 60))
 
           # ==================================
-          # Local + UTC timestamps
+          # Recovery quality
+          # ==================================
+
+          RECOVERY_STATE="Healthy"
+
+          if [ "$ACTION" = "closed" ]; then
+
+            if [[ "$LATENCY" =~ ^[0-9]+$ ]]; then
+
+              if [ "$LATENCY" -gt 2000 ]; then
+                RECOVERY_STATE="Recovered but unstable"
+              elif [ "$LATENCY" -gt 1000 ]; then
+                RECOVERY_STATE="Recovered degraded"
+              fi
+
+            fi
+
+          fi
+
+          # ==================================
+          # Time formatting
           # ==================================
 
           LOCAL_TIME=$(TZ="$SUMMARY_TIMEZONE" \
@@ -490,7 +563,7 @@ jobs:
             date +"%H:%M UTC")
 
           # ==================================
-          # DOWN EVENT
+          # DOWN MESSAGE
           # ==================================
 
           if [ "$ACTION" = "opened" ]; then
@@ -506,6 +579,11 @@ jobs:
             fi
 
             MSG+="📊 Health: $JITTER\n"
+
+            if [ "$FLAPS" -ge 3 ]; then
+              MSG+="⚠ Flapping detected\n"
+            fi
+
             MSG+="📉 Incident Count: $INCIDENTS\n"
             MSG+="📘 MTTR: ${MTTR_MIN} mins\n"
             MSG+="#Incident-$NUMBER\n\n"
@@ -513,13 +591,9 @@ jobs:
             MSG+="🔗 Incident: $INCIDENT_URL\n"
             MSG+="🔗 Status: $STATUS_URL\n\n"
 
-          # ==================================
-          # RECOVERY EVENT
-          # ==================================
-
           else
 
-            MSG="✅ SERVICE RECOVERED\n\n"
+            MSG="$SEVERITY\n\n"
 
             MSG+="🌐 Site: $SITE\n"
             MSG+="📡 Status: HEALTHY\n"
@@ -529,6 +603,7 @@ jobs:
               MSG+="$SPEED Current latency: $LATENCY ms\n"
             fi
 
+            MSG+="📊 Recovery: $RECOVERY_STATE\n"
             MSG+="📊 Health: $JITTER\n"
             MSG+="⏱ Downtime: $DURATION\n"
             MSG+="📉 Incident Count: $INCIDENTS\n"
@@ -552,6 +627,7 @@ jobs:
       # ====================================
 
       - name: Send Telegram
+
         run: |
 
           PAYLOAD=$(jq -n \
@@ -571,31 +647,45 @@ jobs:
             -d "$PAYLOAD"
 
       # ====================================
-      # Persist metrics state
-      # ====================================
-      #
-      # Saves updated MTTR + incident data.
+      # Persist metrics safely
       # ====================================
 
-      - name: Commit metrics
+      - name: Commit metrics safely
+
         run: |
+
           git config user.name "github-actions"
           git config user.email "actions@github.com"
 
           git add history/incident-metrics.json
 
-          git diff --cached --quiet || git commit -m "Update incident metrics"
+          git diff --cached --quiet && exit 0
 
-          git push
+          git commit -m "Update incident observability metrics"
+
+          for i in 1 2 3; do
+
+            echo "Attempt $i"
+
+            git pull --rebase origin master || true
+
+            if git push origin master; then
+
+              echo "Push successful"
+              exit 0
+
+            fi
+
+            echo "Retrying push..."
+            sleep 3
+
+          done
+
+          echo "Push failed after retries"
+          exit 1
 
   # ========================================
-  # WEEKLY INCIDENT REPORT
-  # ========================================
-  #
-  # Sends weekly operational summary:
-  # - top failing services
-  # - incident frequency
-  # - MTTR statistics
+  # WEEKLY INCIDENT ANALYTICS REPORT
   # ========================================
 
   weekly-report:
@@ -606,13 +696,14 @@ jobs:
 
     steps:
 
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       # ====================================
-      # Build weekly analytics report
+      # Build weekly report
       # ====================================
 
-      - name: Build weekly report
+      - name: Build report
         id: report
 
         env:
@@ -620,31 +711,39 @@ jobs:
 
         run: |
 
-          FILE="history/incident-metrics.json"
+          DB="history/incident-metrics.json"
 
-          REPORT="📊 Weekly Incident Report\n\n"
+          REPORT="📊 Weekly Incident Analytics\n\n"
 
           TOP=$(jq -r '
             to_entries
-            | sort_by(-.value.incidents)
+            | sort_by(-(.value.weekly // 0))
             | .[:5]
             | .[]
-            | "\(.key)|\(.value.incidents)|\(.value.mttr // 0)"
-          ' "$FILE")
+            | "\(.key)|\(.value.weekly // 0)|\(.value.mttr // 0)|\(.value.flaps // 0)"
+          ' "$DB")
 
           INDEX=1
 
-          while IFS="|" read -r SITE INCIDENTS MTTR; do
+          while IFS="|" read -r SITE WEEKLY MTTR FLAPS; do
 
             [ -z "$SITE" ] && continue
 
             REPORT+="$INDEX. 🌐 $SITE\n"
-            REPORT+="   📉 Incidents: $INCIDENTS\n"
-            REPORT+="   📘 MTTR: $((MTTR / 60)) mins\n\n"
+            REPORT+="   📉 Weekly Incidents: $WEEKLY\n"
+            REPORT+="   📘 MTTR: $((MTTR / 60)) mins\n"
+            REPORT+="   ⚠ Flaps: $FLAPS\n\n"
 
             INDEX=$((INDEX+1))
 
           done <<< "$TOP"
+
+          REPORT+="━━━━━━━━━━━━━━━━━━\n\n"
+
+          REPORT+="📊 Observability Notes\n"
+          REPORT+="• High MTTR = slower recovery\n"
+          REPORT+="• High flaps = unstable service\n"
+          REPORT+="• Frequent incidents = infra bottleneck\n\n"
 
           LOCAL_TIME=$(TZ="$SUMMARY_TIMEZONE" \
             date +"%d %b %Y | %I:%M %p %Z")
@@ -656,10 +755,11 @@ jobs:
           echo "EOF" >> $GITHUB_OUTPUT
 
       # ====================================
-      # Send weekly Telegram report
+      # Send weekly report
       # ====================================
 
-      - name: Send weekly report
+      - name: Send Telegram report
+
         run: |
 
           PAYLOAD=$(jq -n \
