@@ -553,9 +553,9 @@ jobs:
           # Time + runtime
           # ==================================
 
-          SUMMARY+="\n🕒 $LOCAL_TIME\n"
-          SUMMARY+="🌍 $UTC_TIME\n"
-          SUMMARY+="⏱ Runtime: $(( $(date +%s) - $START ))s"
+          SUMMARY+="\n🕒 $LOCAL_TIME | "
+          SUMMARY+="🌍 $UTC_TIME | "
+          SUMMARY+="📝⏱: $(( $(date +%s) - $START ))s"
 
           echo "message<<EOF" >> $GITHUB_OUTPUT
           echo -e "$SUMMARY" >> $GITHUB_OUTPUT
