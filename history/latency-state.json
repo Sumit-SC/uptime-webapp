@@ -1,25 +1,25 @@
 {
   "portfolio-page": {
-    "spikes": 0,
-    "last_alert": 1778049837,
+    "spikes": 1,
+    "last_alert": 1778054300,
     "active": true,
-    "weekly_spikes": 3,
+    "weekly_spikes": 4,
     "avg": 413,
     "deviation": 0
   },
   "personal-lab": {
-    "spikes": 0,
-    "last_alert": 1778049837,
+    "spikes": 1,
+    "last_alert": 1778054300,
     "active": true,
-    "weekly_spikes": 3,
+    "weekly_spikes": 4,
     "avg": 440,
     "deviation": 0
   },
   "portfolio-website": {
-    "spikes": 0,
-    "last_alert": 1778049837,
+    "spikes": 1,
+    "last_alert": 1778054300,
     "active": true,
-    "weekly_spikes": 3,
+    "weekly_spikes": 4,
     "avg": 310,
     "deviation": 0
   },
@@ -30,10 +30,10 @@
     "spikes": 0
   },
   "streamio": {
-    "spikes": 0,
-    "last_alert": 1778049837,
+    "spikes": 1,
+    "last_alert": 1778054300,
     "active": true,
-    "weekly_spikes": 3,
+    "weekly_spikes": 4,
     "avg": 1011,
     "deviation": 0
   }
