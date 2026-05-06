@@ -121,27 +121,59 @@
 # = Monday 03:00 UTC
 #
 # ==========================================
+# IMPORTANT NOTES
+# ==========================================
+#
+# This workflow DOES NOT simply detect:
+#   "high latency"
+#
+# Instead it detects:
+#   abnormal deviation from historical baseline
+#
+# Example:
+#
+# Google:
+#   avg = 70ms
+#   current = 180ms
+#   => severe degradation
+#
+# Streamio:
+#   avg = 1100ms
+#   current = 1200ms
+#   => normal behavior
 
 # ==========================================
 # Actual Working Code ⬇️
 # ==========================================
 
+# ==========================================
+
 name: Advanced Latency Observability
+
+# ==========================================
+# Prevent concurrent writes
+# ==========================================
+
+concurrency:
+  group: latency-observability
+  cancel-in-progress: false
 
 on:
 
   # ========================================
-  # Latency analysis every 30 mins
+  # Latency checks
   # ========================================
+
   schedule:
     - cron: "*/30 * * * *"
 
-    # Weekly analytics report
+    # Weekly analytics
     - cron: "0 3 * * 1"
 
   # ========================================
   # Manual trigger
   # ========================================
+
   workflow_dispatch:
     inputs:
       debug:
@@ -157,10 +189,15 @@ jobs:
 
   latency-check:
 
-    # Prevent weekly report trigger
+    # Skip weekly cron
     if: github.event.schedule != '0 3 * * 1'
 
     runs-on: ubuntu-latest
+
+    env:
+      STATUS_BASE_URL: ${{ secrets.STATUS_BASE_URL }}
+      SUMMARY_TIMEZONE: ${{ secrets.SUMMARY_TIMEZONE }}
+      DEBUG_MODE: ${{ github.event.inputs.debug }}
 
     steps:
 
@@ -168,13 +205,14 @@ jobs:
       # Checkout repository
       # ====================================
 
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       # ====================================
-      # Initialize persistent state
+      # Initialize persistent DB
       # ====================================
 
-      - name: Initialize state
+      - name: Initialize latency DB
         run: |
 
           mkdir -p history
@@ -190,29 +228,23 @@ jobs:
       - name: Analyze latency
         id: analyze
 
-        env:
-          STATUS_BASE_URL: ${{ secrets.STATUS_BASE_URL }}
-          SUMMARY_TIMEZONE: ${{ secrets.SUMMARY_TIMEZONE }}
-          DEBUG_MODE: ${{ github.event.inputs.debug }}
-
         run: |
 
           FILE="history/summary.json"
-          STATE_FILE="history/latency-state.json"
+          DB="history/latency-state.json"
 
           TMP_ALERT=$(mktemp)
           TMP_INSIGHT=$(mktemp)
+          TMP_RECOVERY=$(mktemp)
 
           NOW=$(date +%s)
 
-          ALERT_BLOCK=""
-          RECOVERY_BLOCK=""
-          INSIGHT_BLOCK=""
-
           COUNT=$(jq length "$FILE")
 
+          ACTIVE_ALERTS=0
+
           # ==================================
-          # Iterate all services
+          # Iterate services
           # ==================================
 
           for i in $(seq 0 $(($COUNT - 1))); do
@@ -225,12 +257,16 @@ jobs:
 
             [ ! -f "$YML_FILE" ] && continue
 
+            # ==================================
+            # Current latency
+            # ==================================
+
             CURRENT=$(grep 'responseTime:' "$YML_FILE" | awk '{print $2}')
 
             [ -z "$CURRENT" ] && CURRENT=99999
 
             # ==================================
-            # DOWN site handling
+            # DOWN state handling
             # ==================================
 
             if [ "$STATUS" != "up" ]; then
@@ -239,14 +275,15 @@ jobs:
               SPEED="💀"
 
               AVG=0
-              DEVIATION=999
+              DEV=999
 
               ALERT=1
+              JITTER="Critical"
 
             else
 
               # ==============================
-              # Rolling latency history
+              # Rolling average
               # ==============================
 
               HISTORY=$(grep 'responseTime:' "$YML_FILE" \
@@ -259,8 +296,10 @@ jobs:
               for val in $HISTORY; do
 
                 if [[ "$val" =~ ^[0-9]+$ ]]; then
+
                   SUM=$((SUM + val))
                   COUNT_H=$((COUNT_H + 1))
+
                 fi
 
               done
@@ -269,24 +308,32 @@ jobs:
 
               AVG=$((SUM / COUNT_H))
 
+              [ "$AVG" -le 0 ] && AVG=1
+
               # ==============================
-              # TRUE deviation %
-              #
-              # Example:
-              # avg=100 current=300
-              # deviation=200%
+              # TRUE deviation
               # ==============================
 
-              if [ "$AVG" -gt 0 ]; then
-                DEVIATION=$(((CURRENT - AVG) * 100 / AVG))
+              DEV=$(( ((CURRENT - AVG) * 100) / AVG ))
+
+              [ "$DEV" -lt 0 ] && DEV=0
+
+              # ==============================
+              # Jitter classification
+              # ==============================
+
+              if [ "$DEV" -lt 25 ]; then
+                JITTER="Stable"
+              elif [ "$DEV" -lt 75 ]; then
+                JITTER="Moderate"
+              elif [ "$DEV" -lt 150 ]; then
+                JITTER="Unstable"
               else
-                DEVIATION=0
+                JITTER="Severe"
               fi
 
-              [ "$DEVIATION" -lt 0 ] && DEVIATION=0
-
               # ==============================
-              # SPEED LADDER
+              # Speed ladder
               # ==============================
 
               if [ "$CURRENT" -lt 100 ]; then
@@ -308,24 +355,20 @@ jobs:
               fi
 
               # ==============================
-              # ADAPTIVE SEVERITY MODEL
-              #
-              # Uses BOTH:
-              # - relative degradation
-              # - absolute latency
+              # Adaptive severity
               # ==============================
 
-              if [ "$DEVIATION" -lt 25 ]; then
+              if [ "$DEV" -lt 25 ]; then
 
                 LEVEL="🟢"
                 ALERT=0
 
-              elif [ "$DEVIATION" -lt 75 ]; then
+              elif [ "$DEV" -lt 75 ]; then
 
                 LEVEL="⚠"
                 ALERT=0
 
-              elif [ "$DEVIATION" -lt 200 ]; then
+              elif [ "$DEV" -lt 200 ]; then
 
                 LEVEL="🚨"
                 ALERT=1
@@ -340,30 +383,54 @@ jobs:
             fi
 
             # ==================================
-            # Debug mode
+            # Debug override
             # ==================================
 
             if [ "$DEBUG_MODE" = "true" ]; then
 
               if [ "$CURRENT" -ge 200 ]; then
+
                 ALERT=1
                 LEVEL="🧪"
+
               else
+
                 ALERT=0
+
               fi
 
             fi
 
             # ==================================
-            # Consecutive spike validation
-            #
-            # Prevents noisy one-off spikes
+            # Persistent metrics
             # ==================================
 
-            PREV_SPIKES=$(jq -r ".\"$SLUG\".spikes // 0" "$STATE_FILE")
+            SPIKES=$(jq -r \
+              --arg slug "$SLUG" \
+              '.[$slug].spikes // 0' \
+              "$DB")
+
+            WEEKLY=$(jq -r \
+              --arg slug "$SLUG" \
+              '.[$slug].weekly_spikes // 0' \
+              "$DB")
+
+            PREV_ACTIVE=$(jq -r \
+              --arg slug "$SLUG" \
+              '.[$slug].active // false' \
+              "$DB")
+
+            LAST_ALERT=$(jq -r \
+              --arg slug "$SLUG" \
+              '.[$slug].last_alert // 0' \
+              "$DB")
+
+            # ==================================
+            # Consecutive spike validation
+            # ==================================
 
             if [ "$ALERT" -eq 1 ]; then
-              SPIKES=$((PREV_SPIKES + 1))
+              SPIKES=$((SPIKES + 1))
             else
               SPIKES=0
             fi
@@ -372,24 +439,26 @@ jobs:
               --arg slug "$SLUG" \
               --argjson spikes "$SPIKES" \
               '.[$slug].spikes = $spikes' \
-              "$STATE_FILE" > tmp.json && mv tmp.json "$STATE_FILE"
+              "$DB" > tmp.json && mv tmp.json "$DB"
 
             if [ "$SPIKES" -lt 2 ] && [ "$DEBUG_MODE" != "true" ]; then
               continue
             fi
 
             # ==================================
-            # Cooldown logic
-            #
-            # 3 hours
+            # Cooldown (3 hrs)
             # ==================================
-
-            LAST_ALERT=$(jq -r ".\"$SLUG\".last_alert // 0" "$STATE_FILE")
 
             if [ "$DEBUG_MODE" != "true" ]; then
 
-              if [ $((NOW - LAST_ALERT)) -lt 10800 ]; then
-                continue
+              if [ "$LAST_ALERT" -gt 0 ]; then
+
+                GAP=$((NOW - LAST_ALERT))
+
+                if [ "$GAP" -lt 10800 ]; then
+                  continue
+                fi
+
               fi
 
             fi
@@ -398,126 +467,169 @@ jobs:
             # Recovery detection
             # ==================================
 
-            PREV_ACTIVE=$(jq -r ".\"$SLUG\".active // false" "$STATE_FILE")
-
             if [ "$ALERT" -eq 0 ] && [ "$PREV_ACTIVE" = "true" ]; then
 
-              RECOVERY_BLOCK+="✅ Recovery Detected\n\n"
-
-              RECOVERY_BLOCK+="🌐 $NAME\n"
-              RECOVERY_BLOCK+="$SPEED Current: $CURRENT ms\n"
-              RECOVERY_BLOCK+="📊 Avg: $AVG ms\n"
-              RECOVERY_BLOCK+="📈 Deviation: ${DEVIATION}%\n"
-              RECOVERY_BLOCK+="🔗 $STATUS_BASE_URL/$SLUG\n\n"
+              echo "$NAME|$CURRENT|$AVG|$DEV|$SPEED|$SLUG" >> "$TMP_RECOVERY"
 
               jq \
                 --arg slug "$SLUG" \
                 '.[$slug].active = false' \
-                "$STATE_FILE" > tmp.json && mv tmp.json "$STATE_FILE"
+                "$DB" > tmp.json && mv tmp.json "$DB"
 
               continue
 
             fi
 
             # ==================================
-            # Skip healthy services
+            # Skip healthy
             # ==================================
 
             [ "$ALERT" -ne 1 ] && continue
 
+            ACTIVE_ALERTS=$((ACTIVE_ALERTS + 1))
+
             # ==================================
-            # Update alert state
+            # Update DB state
             # ==================================
+
+            WEEKLY=$((WEEKLY + 1))
 
             jq \
               --arg slug "$SLUG" \
               --argjson now "$NOW" \
+              --argjson avg "$AVG" \
+              --argjson dev "$DEV" \
+              --argjson weekly "$WEEKLY" \
               '.[$slug].last_alert = $now |
                .[$slug].active = true |
-               .[$slug].weekly_spikes += 1' \
-              "$STATE_FILE" > tmp.json && mv tmp.json "$STATE_FILE"
+               .[$slug].avg = $avg |
+               .[$slug].deviation = $dev |
+               .[$slug].weekly_spikes = $weekly' \
+              "$DB" > tmp.json && mv tmp.json "$DB"
 
             # ==================================
-            # Store alert
+            # Alert telemetry
             # ==================================
 
-            echo "$CURRENT|$LEVEL|$SPEED|$NAME|$SLUG|$AVG|$DEVIATION" >> $TMP_ALERT
+            echo "$DEV|$LEVEL|$SPEED|$NAME|$SLUG|$CURRENT|$AVG|$JITTER" \
+              >> "$TMP_ALERT"
 
             # ==================================
-            # Store insights
+            # Insights telemetry
             # ==================================
 
-            echo "$CURRENT|$SPEED|$NAME" >> $TMP_INSIGHT
+            echo "$CURRENT|$SPEED|$NAME" >> "$TMP_INSIGHT"
 
           done
 
           # ==================================
-          # Build alert section
+          # Build alert block
           # ==================================
+
+          FINAL=""
 
           if [ -s "$TMP_ALERT" ]; then
 
-            SORTED=$(sort -nr $TMP_ALERT | head -n 3)
+            ALERTS=$(sort -nr "$TMP_ALERT" | head -n 5)
 
-            ALERT_BLOCK="🚨 Critical Latency Alerts\n\n"
+            FINAL+="🚨 Latency Observability Alerts\n\n"
 
             INDEX=1
 
-            while IFS="|" read -r CUR LEVEL SPEED NAME SLUG AVG DEV; do
+            while IFS="|" read -r DEV LEVEL SPEED NAME SLUG CUR AVG JITTER; do
 
-              [ -z "$CUR" ] && continue
+              [ -z "$NAME" ] && continue
 
-              ALERT_BLOCK+="$INDEX. $LEVEL $NAME\n"
-              ALERT_BLOCK+="   $SPEED $CUR ms\n"
-              ALERT_BLOCK+="   📊 Avg: $AVG ms\n"
-              ALERT_BLOCK+="   📈 Deviation: +${DEV}%\n"
-              ALERT_BLOCK+="   🔗 $STATUS_BASE_URL/$SLUG\n\n"
+              FINAL+="$INDEX. $LEVEL $NAME\n"
+              FINAL+="   $SPEED $CUR ms\n"
+              FINAL+="   📊 Rolling Avg: $AVG ms\n"
+              FINAL+="   📈 Deviation: +${DEV}%\n"
+              FINAL+="   📡 Jitter: $JITTER\n"
+              FINAL+="   🔗 $STATUS_BASE_URL/$SLUG\n\n"
 
-              INDEX=$((INDEX+1))
+              INDEX=$((INDEX + 1))
 
-            done <<< "$SORTED"
-
-            ALERT_BLOCK+="━━━━━━━━━━━━━━━━━━\n\n"
+            done <<< "$ALERTS"
 
           fi
 
           # ==================================
-          # Build performance insights
+          # Recovery telemetry
+          # ==================================
+
+          if [ -s "$TMP_RECOVERY" ]; then
+
+            FINAL+="━━━━━━━━━━━━━━━━━━\n\n"
+            FINAL+="✅ Recovery Telemetry\n\n"
+
+            while IFS="|" read -r NAME CUR AVG DEV SPEED SLUG; do
+
+              [ -z "$NAME" ] && continue
+
+              FINAL+="🌐 $NAME\n"
+              FINAL+="📉 Latency normalized\n"
+              FINAL+="$SPEED Current: $CUR ms\n"
+              FINAL+="📊 Avg: $AVG ms\n"
+              FINAL+="📈 Deviation: ${DEV}%\n"
+              FINAL+="🔗 $STATUS_BASE_URL/$SLUG\n\n"
+
+            done < "$TMP_RECOVERY"
+
+          fi
+
+          # ==================================
+          # Performance insights
           # ==================================
 
           if [ -s "$TMP_INSIGHT" ]; then
 
-            INSIGHT_BLOCK="📊 Performance Insights\n\n"
+            FINAL+="━━━━━━━━━━━━━━━━━━\n\n"
+            FINAL+="📊 Performance Insights\n\n"
 
-            SORTED_INSIGHT=$(sort -nr $TMP_INSIGHT | head -n 3)
+            SORTED_INSIGHT=$(sort -nr "$TMP_INSIGHT" | head -n 3)
 
             while IFS="|" read -r LAT SPEED NAME; do
 
               [ -z "$LAT" ] && continue
 
-              INSIGHT_BLOCK+="🌐 $NAME\n"
-              INSIGHT_BLOCK+="$SPEED $LAT ms\n\n"
+              FINAL+="🌐 $NAME\n"
+              FINAL+="$SPEED $LAT ms\n\n"
 
             done <<< "$SORTED_INSIGHT"
 
           fi
 
           # ==================================
-          # Final Telegram message
+          # Infrastructure latency state
           # ==================================
 
-          FINAL=""
+          FINAL+="━━━━━━━━━━━━━━━━━━\n\n"
+          FINAL+="📡 Infrastructure Latency State\n\n"
 
-          [ -n "$ALERT_BLOCK" ] && FINAL+="$ALERT_BLOCK"
+          if [ "$ACTIVE_ALERTS" -ge 3 ]; then
+            STATE="Critical degradation"
+          elif [ "$ACTIVE_ALERTS" -ge 1 ]; then
+            STATE="Moderate degradation"
+          else
+            STATE="Stable"
+          fi
 
-          [ -n "$RECOVERY_BLOCK" ] && FINAL+="$RECOVERY_BLOCK"
+          FINAL+="• $STATE\n"
+          FINAL+="• Active degraded services: $ACTIVE_ALERTS\n"
+          FINAL+="• Adaptive anomaly detection operational\n"
+          FINAL+="• Rolling baseline telemetry active\n"
 
-          [ -n "$INSIGHT_BLOCK" ] && FINAL+="$INSIGHT_BLOCK"
+          # ==================================
+          # Empty report suppression
+          # ==================================
 
-          # Prevent empty reports
           if [ -z "$FINAL" ]; then
             FINAL="🟢 No significant latency anomalies detected."
           fi
+
+          # ==================================
+          # Time formatting
+          # ==================================
 
           LOCAL_TIME=$(TZ="$SUMMARY_TIMEZONE" \
             date +"%d %b %Y | %I:%M %p %Z")
@@ -525,7 +637,7 @@ jobs:
           UTC_TIME=$(TZ="UTC" \
             date +"%H:%M UTC")
 
-          FINAL+="\n🕒 $LOCAL_TIME"
+          FINAL+="\n\n🕒 $LOCAL_TIME"
           FINAL+="\n🌍 $UTC_TIME"
 
           echo "msg<<EOF" >> $GITHUB_OUTPUT
@@ -536,7 +648,8 @@ jobs:
       # Send Telegram alert
       # ====================================
 
-      - name: Send Telegram
+      - name: Send Telegram alert
+
         run: |
 
           PAYLOAD=$(jq -n \
@@ -556,10 +669,11 @@ jobs:
             -d "$PAYLOAD"
 
       # ====================================
-      # Persist latency state
+      # Persist state safely
       # ====================================
 
-      - name: Commit state
+      - name: Persist latency state
+
         run: |
 
           git config user.name "github-actions"
@@ -567,13 +681,26 @@ jobs:
 
           git add history/latency-state.json
 
-          git diff --cached --quiet || \
-            git commit -m "Update latency observability state"
+          git diff --cached --quiet && exit 0
 
-          git push
+          git commit -m "Update latency observability state"
+
+          for i in 1 2 3; do
+
+            git pull --rebase origin master || true
+
+            if git push origin master; then
+              exit 0
+            fi
+
+            sleep 3
+
+          done
+
+          exit 1
 
   # ========================================
-  # WEEKLY LATENCY ANALYTICS REPORT
+  # WEEKLY LATENCY ANALYTICS
   # ========================================
 
   weekly-report:
@@ -584,9 +711,14 @@ jobs:
 
     steps:
 
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: Build weekly report
+      # ====================================
+      # Build weekly report
+      # ====================================
+
+      - name: Build report
         id: report
 
         env:
@@ -596,7 +728,7 @@ jobs:
 
           FILE="history/latency-state.json"
 
-          REPORT="📊 Weekly Latency Report\n\n"
+          REPORT="📊 Weekly Latency Analytics\n\n"
 
           TOP=$(jq -r '
             to_entries
@@ -613,11 +745,17 @@ jobs:
             [ -z "$SITE" ] && continue
 
             REPORT+="$INDEX. 🌐 $SITE\n"
-            REPORT+="   🚨 Spike Events: $SPIKES\n\n"
+            REPORT+="   🚨 Weekly Spike Events: $SPIKES\n\n"
 
-            INDEX=$((INDEX+1))
+            INDEX=$((INDEX + 1))
 
           done <<< "$TOP"
+
+          REPORT+="━━━━━━━━━━━━━━━━━━\n\n"
+          REPORT+="📡 Observability Notes\n"
+          REPORT+="• High spikes = unstable service\n"
+          REPORT+="• Large deviations = infra degradation\n"
+          REPORT+="• Rolling baselines improve anomaly detection\n\n"
 
           LOCAL_TIME=$(TZ="$SUMMARY_TIMEZONE" \
             date +"%d %b %Y | %I:%M %p %Z")
@@ -632,7 +770,8 @@ jobs:
       # Send weekly report
       # ====================================
 
-      - name: Send Telegram
+      - name: Send Telegram report
+
         run: |
 
           PAYLOAD=$(jq -n \
