@@ -1,6 +1,11 @@
 {
   "my-web": {
-    "active": true,
-    "last_incident": 1778047945
+    "active": false,
+    "last_incident": 1778048315,
+    "incidents": 1,
+    "weekly": 1,
+    "flaps": 1,
+    "downtime": 369,
+    "mttr": 369
   }
 }
