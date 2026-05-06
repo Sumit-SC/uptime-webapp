@@ -1,17 +1,77 @@
-name: Incident Alerts (Upptime Issues → Telegram)
+# ==========================================
+# INCIDENT ALERT SYSTEM
+# ==========================================
+#
+# Sends Telegram alerts when:
+# ✅ site goes DOWN
+# ✅ service RECOVERS
+#
+# Uses Upptime issue lifecycle:
+# - issue opened  -> outage
+# - issue closed  -> recovery
+#
+# Reads:
+#   history/summary.json
+#   history/*.yml
+#
+# ==========================================
+# REQUIRED GITHUB SECRETS
+# ==========================================
+#
+# INCIDENT_BASE_URL
+#   Base incident page URL
+#
+# STATUS_BASE_URL
+#   Base history/status URL
+#
+# CHAT_ID
+#   Telegram group/chat ID
+#
+# ALERTS_TOPIC_ID
+#   Telegram topic/thread ID
+#
+# SUMMARY_BOT_TOKEN
+#   Telegram bot token
+#
+# SUMMARY_TIMEZONE
+#   Display timezone
+#
+# Example:
+#   Asia/Kolkata
+#   UTC
+#
+# ==========================================
+
+name: Incident Alerts
 
 on:
+
+  # ========================================
+  # Upptime issue lifecycle
+  # ========================================
   issues:
-    types: [opened, closed]
+    types:
+      - opened
+      - closed
 
 jobs:
   alert:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Filter Upptime issues
+
+      # ====================================
+      # Checkout repository
+      # ====================================
+      - uses: actions/checkout@v4
+
+      # ====================================
+      # Filter only Upptime incidents
+      # ====================================
+      - name: Filter issues
         id: filter
         run: |
+
           TITLE="${{ github.event.issue.title }}"
 
           if [[ "$TITLE" == *"down"* ]] || [[ "$TITLE" == *"up"* ]]; then
@@ -20,51 +80,254 @@ jobs:
             echo "valid=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Stop if not relevant
+      # ====================================
+      # Ignore unrelated issues
+      # ====================================
+      - name: Stop if irrelevant
         if: steps.filter.outputs.valid != 'true'
         run: exit 0
 
-      - name: Build message
+      # ====================================
+      # Build incident message
+      # ====================================
+      - name: Build Telegram message
         id: build
+
         env:
           INCIDENT_BASE_URL: ${{ secrets.INCIDENT_BASE_URL }}
+          STATUS_BASE_URL: ${{ secrets.STATUS_BASE_URL }}
+          SUMMARY_TIMEZONE: ${{ secrets.SUMMARY_TIMEZONE }}
+
         run: |
+
           TITLE="${{ github.event.issue.title }}"
+          ACTION="${{ github.event.action }}"
           NUMBER="${{ github.event.issue.number }}"
+
+          CREATED="${{ github.event.issue.created_at }}"
+          CLOSED="${{ github.event.issue.closed_at }}"
 
           INCIDENT_URL="$INCIDENT_BASE_URL/$NUMBER"
 
-          # status detection
-          if [[ "$TITLE" == *"down"* ]]; then
-            STATUS="DOWN"
-            ICON="🛑"
-            ALERT="🚨 INCIDENT"
-          else
-            STATUS="RECOVERED"
-            ICON="🟢"
-            ALERT="✅ RESOLVED"
-          fi
+          # ==================================
+          # Clean site name
+          # ==================================
 
-          # clean site name
           SITE=$(echo "$TITLE" \
             | sed -E 's/\[.*\]//g' \
             | sed -E 's/^🟥 //; s/^🟩 //' \
             | sed -E 's/ is down.*//; s/ is up.*//' \
             | xargs)
 
-          # build message safely (NO heredoc)
-          MSG="$ICON $ALERT\n\n"
-          MSG+="🌐 Site: $SITE\n"
-          MSG+="📡 Status: $STATUS\n"
-          MSG+="🔗 $INCIDENT_URL\n\n"
-          MSG+="🕒 $(TZ='Asia/Kolkata' date +"%d %b %Y | %I:%M %p IST")"
+          # ==================================
+          # Find matching slug
+          # ==================================
+
+          FILE="history/summary.json"
+
+          SLUG=$(jq -r \
+            --arg site "$SITE" \
+            '.[] | select(.name == $site) | .slug' \
+            "$FILE")
+
+          [ -z "$SLUG" ] && SLUG="unknown"
+
+          STATUS_URL="$STATUS_BASE_URL/$SLUG"
+
+          # ==================================
+          # Read latest latency
+          # ==================================
+
+          YML_FILE="history/$SLUG.yml"
+
+          LATENCY="unknown"
+
+          if [ -f "$YML_FILE" ]; then
+            LATENCY=$(grep 'responseTime:' "$YML_FILE" | awk '{print $2}')
+          fi
+
+          # ==================================
+          # Speed ladder
+          # ==================================
+
+          if [[ "$LATENCY" =~ ^[0-9]+$ ]]; then
+
+            if [ "$LATENCY" -lt 100 ]; then
+              SPEED="⚡"
+            elif [ "$LATENCY" -lt 250 ]; then
+              SPEED="🚀"
+            elif [ "$LATENCY" -lt 500 ]; then
+              SPEED="✈️"
+            elif [ "$LATENCY" -lt 750 ]; then
+              SPEED="🏎️"
+            elif [ "$LATENCY" -lt 1000 ]; then
+              SPEED="🚗"
+            elif [ "$LATENCY" -lt 1500 ]; then
+              SPEED="🏇"
+            elif [ "$LATENCY" -lt 2000 ]; then
+              SPEED="🐢"
+            else
+              SPEED="🐌"
+            fi
+
+          else
+            SPEED="⚠"
+          fi
+
+          # ==================================
+          # Uptime %
+          # ==================================
+
+          UPTIME=$(jq -r \
+            --arg site "$SITE" \
+            '.[] | select(.name == $site) | .uptime' \
+            "$FILE")
+
+          # ==================================
+          # Downtime duration
+          # ==================================
+
+          DURATION="N/A"
+
+          if [ "$ACTION" = "closed" ]; then
+
+            START=$(date -d "$CREATED" +%s)
+            END=$(date -d "$CLOSED" +%s)
+
+            DIFF=$((END - START))
+
+            HOURS=$((DIFF / 3600))
+            MINS=$(((DIFF % 3600) / 60))
+
+            if [ "$HOURS" -gt 0 ]; then
+              DURATION="${HOURS}h ${MINS}m"
+            else
+              DURATION="${MINS} mins"
+            fi
+
+          fi
+
+          # ==================================
+          # Severity classification
+          # ==================================
+
+          if [ "$ACTION" = "opened" ]; then
+
+            if [[ "$LATENCY" =~ ^[0-9]+$ ]]; then
+
+              if [ "$LATENCY" -lt 1000 ]; then
+                SEVERITY="⚠ Minor Incident"
+              elif [ "$LATENCY" -lt 2500 ]; then
+                SEVERITY="🚨 Major Incident"
+              else
+                SEVERITY="🛑 Critical Incident"
+              fi
+
+            else
+              SEVERITY="🛑 Critical Incident"
+            fi
+
+          else
+
+            if [ "$DIFF" -lt 900 ]; then
+              SEVERITY="⚠ Minor Recovery"
+            elif [ "$DIFF" -lt 3600 ]; then
+              SEVERITY="🚨 Major Recovery"
+            else
+              SEVERITY="🛑 Critical Recovery"
+            fi
+
+          fi
+
+          # ==================================
+          # Jitter / degradation indicator
+          # ==================================
+
+          JITTER="Stable"
+
+          if [[ "$LATENCY" =~ ^[0-9]+$ ]]; then
+
+            if [ "$LATENCY" -gt 2000 ]; then
+              JITTER="High instability"
+            elif [ "$LATENCY" -gt 1000 ]; then
+              JITTER="Degraded"
+            elif [ "$LATENCY" -gt 500 ]; then
+              JITTER="Moderate"
+            fi
+
+          fi
+
+          # ==================================
+          # Local + UTC timestamps
+          # ==================================
+
+          LOCAL_TIME=$(TZ="$SUMMARY_TIMEZONE" \
+            date +"%d %b %Y | %I:%M %p %Z")
+
+          UTC_TIME=$(TZ="UTC" \
+            date +"%H:%M UTC")
+
+          # ==================================
+          # DOWN event
+          # ==================================
+
+          if [ "$ACTION" = "opened" ]; then
+
+            MSG="$SEVERITY\n\n"
+
+            MSG+="🌐 Site: $SITE\n"
+            MSG+="📡 Status: DOWN\n"
+            MSG+="📈 Uptime: $UPTIME\n"
+
+            if [[ "$LATENCY" =~ ^[0-9]+$ ]]; then
+              MSG+="$SPEED Last latency: $LATENCY ms\n"
+            fi
+
+            MSG+="📊 Health: $JITTER\n"
+            MSG+="🧭 Detection: Upptime\n"
+            MSG+="#Incident-$NUMBER\n\n"
+
+            MSG+="🔗 Incident: $INCIDENT_URL\n"
+            MSG+="🔗 Status: $STATUS_URL\n\n"
+
+          # ==================================
+          # RECOVERY event
+          # ==================================
+
+          else
+
+            MSG="✅ SERVICE RECOVERED\n\n"
+
+            MSG+="🌐 Site: $SITE\n"
+            MSG+="📡 Status: HEALTHY\n"
+            MSG+="📈 Uptime: $UPTIME\n"
+
+            if [[ "$LATENCY" =~ ^[0-9]+$ ]]; then
+              MSG+="$SPEED Current latency: $LATENCY ms\n"
+            fi
+
+            MSG+="📊 Health: $JITTER\n"
+            MSG+="⏱ Downtime: $DURATION\n"
+            MSG+="#Incident-$NUMBER\n\n"
+
+            MSG+="🔗 Incident: $INCIDENT_URL\n"
+            MSG+="🔗 Status: $STATUS_URL\n\n"
+
+          fi
+
+          MSG+="🕒 $LOCAL_TIME\n"
+          MSG+="🌍 $UTC_TIME"
 
           echo "msg<<EOF" >> $GITHUB_OUTPUT
           echo -e "$MSG" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
+      # ====================================
+      # Send Telegram alert
+      # ====================================
       - name: Send Telegram
         run: |
+
           PAYLOAD=$(jq -n \
             --arg chat_id "${{ secrets.CHAT_ID }}" \
             --arg text "${{ steps.build.outputs.msg }}" \
@@ -76,6 +339,7 @@ jobs:
               disable_web_page_preview: true
             }')
 
-          curl -s -X POST "https://api.telegram.org/bot${{ secrets.SUMMARY_BOT_TOKEN }}/sendMessage" \
+          curl -s -X POST \
+            "https://api.telegram.org/bot${{ secrets.SUMMARY_BOT_TOKEN }}/sendMessage" \
             -H "Content-Type: application/json" \
             -d "$PAYLOAD"
