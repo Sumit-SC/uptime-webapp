@@ -1,16 +1,16 @@
 {
   "portfolio-page": {
-    "spikes": 1,
+    "spikes": 0,
     "last_alert": 1778039766,
     "active": true
   },
   "personal-lab": {
-    "spikes": 1,
+    "spikes": 0,
     "last_alert": 1778039766,
     "active": true
   },
   "portfolio-website": {
-    "spikes": 1,
+    "spikes": 0,
     "last_alert": 1778039766,
     "active": true
   },
@@ -18,12 +18,12 @@
     "spikes": 0
   },
   "wikipedia": {
-    "spikes": 1,
+    "spikes": 0,
     "last_alert": 1778039766,
     "active": true
   },
   "streamio": {
-    "spikes": 1,
+    "spikes": 0,
     "last_alert": 1778039766,
     "active": true
   }
