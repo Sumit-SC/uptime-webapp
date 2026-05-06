@@ -26,7 +26,7 @@ jobs:
       - name: Build summary
         id: build
         run: |
-          SUMMARY="📊 Uptime Summary\n"
+          SUMMARY="📊 Uptime Summary\n\n"
           SUMMARY+="🔗 Dashboard: $DASHBOARD_URL\n\n"
 
           FILE="history/summary.json"
@@ -150,9 +150,14 @@ jobs:
           AVG_LAT=$(( LAT_COUNT > 0 ? LAT_SUM / LAT_COUNT : 0 ))
 
           # ✅ FIX: Absolute latency emoji mapping
-          if [ "$AVG_LAT" -lt 200 ]; then LAT_ICON="⚡"
-          elif [ "$AVG_LAT" -lt 500 ]; then LAT_ICON="🚀"
+          if [ "$AVG_LAT" -lt 100 ]; then LAT_ICON="⚡"
+          elif [ "$AVG_LAT" -lt 250 ]; then LAT_ICON="🚀"
+          elif [ "$AVG_LAT" -lt 500 ]; then LAT_ICON="✈️"
+          elif [ "$AVG_LAT" -lt 750 ]; then LAT_ICON="🏎️"
           elif [ "$AVG_LAT" -lt 1000 ]; then LAT_ICON="🚗"
+          elif [ "$AVG_LAT" -lt 1250 ]; then LAT_ICON="🏇"
+          elif [ "$AVG_LAT" -lt 1500 ]; then LAT_ICON="🚴‍♂️""⚡"
+          elif [ "$AVG_LAT" -lt 1750 ]; then LAT_ICON="🏃"
           elif [ "$AVG_LAT" -lt 2000 ]; then LAT_ICON="🐢"
           else LAT_ICON="🐌"
           fi
@@ -175,7 +180,7 @@ jobs:
           SUMMARY+="📈 Health: $BAR $HEALTH%\n"
           SUMMARY+="⚡ Avg Latency: $LAT_ICON $AVG_LAT ms\n"
           SUMMARY+="🔴 Down: $DOWN / $TOTAL\n\n"
-          SUMMARY+="🕒 $(TZ='Asia/Kolkata' date +"%d %b %Y | %I:%M %p IST") | ⏱ Runtime: $(( $(date +%s) - $START ))s"
+          SUMMARY+="🕒 $(TZ='Asia/Kolkata' date +"%d %b %Y | %I:%M %p IST") | 📃⏱ $(( $(date +%s) - $START ))s"
 
           echo "message<<EOF" >> $GITHUB_OUTPUT
           echo -e "$SUMMARY" >> $GITHUB_OUTPUT
