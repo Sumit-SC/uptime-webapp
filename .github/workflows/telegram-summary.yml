@@ -1,8 +1,85 @@
-name: Telegram Uptime Summary
+# ==========================================
+# TELEGRAM UPTIME SUMMARY
+# ==========================================
+#
+# Sends a Telegram uptime summary generated
+# from Upptime history files.
+#
+# Reads:
+#   history/summary.json
+#   history/*.yml
+#
+# ==========================================
+# REQUIRED GITHUB SECRETS
+# ==========================================
+#
+# DASHBOARD_URL
+#   Main uptime dashboard URL
+#
+# STATUS_BASE_URL
+#   Base URL for status history pages
+#
+# CHAT_ID
+#   Telegram chat/group ID
+#
+# TOPIC_ID
+#   Telegram forum topic/thread ID
+#
+# SUMMARY_BOT_TOKEN
+#   Telegram bot token
+#
+# SUMMARY_TIMEZONE
+#   Timezone for displayed timestamps
+#
+# Example values:
+#   Asia/Kolkata
+#   Asia/Tokyo
+#   America/New_York
+#   UTC
+#
+# ==========================================
+# CRON NOTES
+# ==========================================
+#
+# GitHub Actions cron uses UTC ONLY.
+#
+# IST = UTC + 5:30
+#
+# Examples:
+#
+# 02:30 UTC = 08:00 AM IST
+# 03:00 UTC = 08:30 AM IST
+#
+# Cron helper:
+# https://crontab.guru/
+#
+# Timezone converter:
+# https://www.worldtimebuddy.com/
+#
+# IMPORTANT:
+# GitHub scheduled workflows may delay
+# by several minutes during high load.
+#
+# For testing:
+# cron: "*/5 * * * *"
+#
+# ==========================================
+# Actual Working Code ⬇️
+# ========================================
+
+name: Telegram Upptime Summary & Stats Monitor
 
 on:
+
+  # ========================================
+  # Daily schedule (2:30 UTC/8am IST hardcoded)
+  # ========================================
   schedule:
-    - cron: "0 3 * * *"   # 02:30 UTC = 08:00 IST
+    - cron: "30 3 * * *"
+
+  # ========================================
+  # Manual trigger
+  # ========================================
   workflow_dispatch:
 
 jobs:
@@ -15,16 +92,27 @@ jobs:
       SUMMARY_TIMEZONE: ${{ secrets.SUMMARY_TIMEZONE }}
 
     steps:
+
+      # ====================================
+      # Runtime timer
+      # ====================================
       - name: Start timer
         run: echo "START=$(date +%s)" >> $GITHUB_ENV
 
+      # ====================================
+      # Checkout repository
+      # ====================================
       - name: Checkout repo
         uses: actions/checkout@v4
 
+      # ====================================
+      # Build Telegram summary
+      # ====================================
       - name: Build summary
         id: build
         run: |
-          SUMMARY="📊 Uptime Summary\n\n"
+
+          SUMMARY="📊 Upptime Monitor Summary\n\n"
           SUMMARY+="🔗 Dashboard: $DASHBOARD_URL\n\n"
 
           FILE="history/summary.json"
@@ -57,9 +145,9 @@ jobs:
               DOWN=$((DOWN+1))
             fi
 
-            # =========================
-            # LATENCY
-            # =========================
+            # ==================================
+            # Read latency from history YAML
+            # ==================================
 
             YML_FILE="history/$SLUG.yml"
             LATENCY=""
@@ -67,6 +155,19 @@ jobs:
             if [ -f "$YML_FILE" ]; then
               LATENCY=$(grep 'responseTime:' "$YML_FILE" | awk '{print $2}')
             fi
+
+            # ==================================
+            # Latency ladder
+            #
+            # ⚡ <100ms
+            # 🚀 <250ms
+            # ✈️ <500ms
+            # 🏎️ <750ms
+            # 🚗 <1000ms
+            # 🏇 <1500ms
+            # 🐢 <2000ms
+            # 🐌 2000ms+
+            # ==================================
 
             if [ "$STATUS" = "down" ]; then
 
@@ -101,9 +202,9 @@ jobs:
               LAT_LABEL="—"
             fi
 
-            # =========================
-            # HEALTH BAR
-            # =========================
+            # ==================================
+            # Health bar
+            # ==================================
 
             UP_NUM=$(echo "$UPTIME" | grep -o '[0-9]*' | head -1)
             UP_NUM=${UP_NUM:-0}
@@ -158,9 +259,9 @@ jobs:
 
           SUMMARY+="$DOWN_BLOCK$UP_BLOCK"
 
-          # =========================
-          # OVERALL METRICS
-          # =========================
+          # ==================================
+          # Overall metrics
+          # ==================================
 
           UP=$((TOTAL - DOWN))
 
@@ -174,24 +275,6 @@ jobs:
             AVG_LAT=$((LAT_SUM / LAT_COUNT))
           else
             AVG_LAT=0
-          fi
-
-          if [ "$AVG_LAT" -lt 100 ]; then
-            LAT_ICON="⚡"
-          elif [ "$AVG_LAT" -lt 250 ]; then
-            LAT_ICON="🚀"
-          elif [ "$AVG_LAT" -lt 500 ]; then
-            LAT_ICON="✈️"
-          elif [ "$AVG_LAT" -lt 750 ]; then
-            LAT_ICON="🏎️"
-          elif [ "$AVG_LAT" -lt 1000 ]; then
-            LAT_ICON="🚗"
-          elif [ "$AVG_LAT" -lt 1500 ]; then
-            LAT_ICON="🏇"
-          elif [ "$AVG_LAT" -lt 2000 ]; then
-            LAT_ICON="🐢"
-          else
-            LAT_ICON="🐌"
           fi
 
           FILLED=$((HEALTH / 20))
@@ -224,7 +307,7 @@ jobs:
 
           SUMMARY+="━━━━━━━━━━━━━━━━━━\n\n"
           SUMMARY+="📈 Health: $BAR $HEALTH%\n"
-          SUMMARY+="⚡ Avg Latency: $LAT_ICON $AVG_LAT ms\n"
+          SUMMARY+="⚡ Avg Latency: $AVG_LAT ms\n"
           SUMMARY+="🔴 Down: $DOWN / $TOTAL\n\n"
 
           SUMMARY+="🕒 $LOCAL_TIME\n"
@@ -235,8 +318,12 @@ jobs:
           echo -e "$SUMMARY" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
+      # ====================================
+      # Send Telegram message
+      # ====================================
       - name: Send Telegram message
         run: |
+
           PAYLOAD=$(jq -n \
             --arg chat_id "${{ secrets.CHAT_ID }}" \
             --arg text "${{ steps.build.outputs.message }}" \
@@ -248,6 +335,7 @@ jobs:
               disable_web_page_preview: true
             }')
 
-          curl -s -X POST "https://api.telegram.org/bot${{ secrets.SUMMARY_BOT_TOKEN }}/sendMessage" \
+          curl -s -X POST \
+            "https://api.telegram.org/bot${{ secrets.SUMMARY_BOT_TOKEN }}/sendMessage" \
             -H "Content-Type: application/json" \
             -d "$PAYLOAD"
