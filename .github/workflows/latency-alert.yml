@@ -200,14 +200,14 @@ jobs:
       - name: Initialize latency DBs
         run: |
 
-          mkdir -p history
+          mkdir -p observability
 
-          if [ ! -f history/latency-state.json ]; then
-            echo "{}" > history/latency-state.json
+          if [ ! -f observability/latency-state.json ]; then
+            echo "{}" > observability/latency-state.json
           fi
 
-          if [ ! -f history/latency-history.json ]; then
-            echo "{}" > history/latency-history.json
+          if [ ! -f observability/latency-history.json ]; then
+            echo "{}" > observability/latency-history.json
           fi
 
       # ====================================
@@ -221,9 +221,9 @@ jobs:
 
           FILE="history/summary.json"
 
-          DB="history/latency-state.json"
+          DB="observability/latency-state.json"
 
-          HISTORY_DB="history/latency-history.json"
+          HISTORY_DB="observability/latency-history.json"
 
           TMP_ALERT=$(mktemp)
           TMP_RECOVERY=$(mktemp)
@@ -729,8 +729,8 @@ jobs:
           git config user.name "github-actions"
           git config user.email "actions@github.com"
 
-          git add history/latency-state.json
-          git add history/latency-history.json
+          git add observability/latency-state.json
+          git add observability/latency-history.json
 
           git diff --cached --quiet && exit 0
 
