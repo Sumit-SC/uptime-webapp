@@ -194,7 +194,7 @@ jobs:
         uses: actions/checkout@v4
 
       # ====================================
-      # Initialize persistent DBs
+      # Initialize DBs
       # ====================================
 
       - name: Initialize latency DBs
@@ -220,18 +220,20 @@ jobs:
         run: |
 
           FILE="history/summary.json"
+
           DB="history/latency-state.json"
+
           HISTORY_DB="history/latency-history.json"
 
           TMP_ALERT=$(mktemp)
-          TMP_INSIGHT=$(mktemp)
           TMP_RECOVERY=$(mktemp)
+          TMP_INSIGHT=$(mktemp)
 
           NOW=$(date +%s)
 
-          COUNT=$(jq length "$FILE")
-
           ACTIVE_ALERTS=0
+
+          COUNT=$(jq length "$FILE")
 
           # ==================================
           # Iterate services
@@ -256,54 +258,28 @@ jobs:
 
             [ -z "$CURRENT" ] && CURRENT=99999
 
-            LAST_SEEN=$(jq -r \
-            --arg slug "$SLUG" \
-            '.[$slug].last_seen_update // ""' \
-            "$DB")
-
             # ==================================
-            # Persistent rolling history
+            # Existing rolling history
             # ==================================
 
-            # ==================================
-            # Append ONLY on fresh probe update
-            # ==================================
-
-            if [ "$LAST_UPDATED" != "$LAST_SEEN" ]; then
-
-              EXISTING=$(jq -r \
+            EXISTING=$(jq -r \
               --arg slug "$SLUG" \
-              '.[$slug] // [] | join(" ")' \
+              '.[$slug].samples // [] | join(" ")' \
               "$HISTORY_DB")
 
-              UPDATED="$EXISTING $CURRENT"
-
-              # Keep last 20 samples only
-              TRIMMED=$(echo "$UPDATED" | awk '{
-              for(i=NF-19;i<=NF;i++)
-              if(i>0) printf $i " "
-              }')
-
-              # Save rolling history
-              jq \
+            LAST_SEEN=$(jq -r \
               --arg slug "$SLUG" \
-              --arg values "$TRIMMED" \
-              '.[$slug] = ($values | split(" ") | map(select(length > 0) | tonumber))' \
-              "$HISTORY_DB" > tmp.json && mv tmp.json "$HISTORY_DB"
+              '.[$slug].last_updated // ""' \
+              "$HISTORY_DB")
 
-              # Save last seen update timestamp
-              jq \
-              --arg slug "$SLUG" \
-              --arg updated "$LAST_UPDATED" \
-              '.[$slug].last_seen_update = $updated' \
-              "$DB" > tmp.json && mv tmp.json "$DB"
-
-            fi
+            # ==================================
+            # Read OLD history first
+            # ==================================
 
             HISTORY=$(jq -r \
-            --arg slug "$SLUG" \
-            '.[$slug] // [] | join(" ")' \
-            "$HISTORY_DB")
+              --arg slug "$SLUG" \
+              '.[$slug].samples[]? // empty' \
+              "$HISTORY_DB")
 
             SUM=0
             COUNT_H=0
@@ -319,70 +295,74 @@ jobs:
 
             done
 
-            [ "$COUNT_H" -eq 0 ] && continue
+            # ==================================
+            # Bootstrap baseline
+            # ==================================
 
-            AVG=$((SUM / COUNT_H))
+            if [ "$COUNT_H" -eq 0 ]; then
+              AVG=$CURRENT
+            else
+              AVG=$((SUM / COUNT_H))
+            fi
 
             [ "$AVG" -le 0 ] && AVG=1
 
             # ==================================
-            # DOWN state handling
+            # Deviation
+            # ==================================
+
+            DEV=$(( ((CURRENT - AVG) * 100) / AVG ))
+
+            [ "$DEV" -lt 0 ] && DEV=0
+
+            # ==================================
+            # Jitter classification
+            # ==================================
+
+            if [ "$DEV" -lt 25 ]; then
+              JITTER="Stable"
+            elif [ "$DEV" -lt 75 ]; then
+              JITTER="Moderate"
+            elif [ "$DEV" -lt 150 ]; then
+              JITTER="Unstable"
+            else
+              JITTER="Severe"
+            fi
+
+            # ==================================
+            # Speed ladder
+            # ==================================
+
+            if [ "$CURRENT" -lt 100 ]; then
+              SPEED="⚡"
+            elif [ "$CURRENT" -lt 250 ]; then
+              SPEED="🚀"
+            elif [ "$CURRENT" -lt 500 ]; then
+              SPEED="✈️"
+            elif [ "$CURRENT" -lt 750 ]; then
+              SPEED="🏎️"
+            elif [ "$CURRENT" -lt 1000 ]; then
+              SPEED="🚗"
+            elif [ "$CURRENT" -lt 1500 ]; then
+              SPEED="🏇"
+            elif [ "$CURRENT" -lt 2000 ]; then
+              SPEED="🐢"
+            else
+              SPEED="🐌"
+            fi
+
+            # ==================================
+            # DOWN service override
             # ==================================
 
             if [ "$STATUS" != "up" ]; then
 
               LEVEL="🛑"
-              SPEED="💀"
-
-              DEV=999
               ALERT=1
+              DEV=999
               JITTER="Critical"
 
             else
-
-              # ==============================
-              # TRUE deviation
-              # ==============================
-
-              DEV=$(( ((CURRENT - AVG) * 100) / AVG ))
-
-              [ "$DEV" -lt 0 ] && DEV=0
-
-              # ==============================
-              # Jitter classification
-              # ==============================
-
-              if [ "$DEV" -lt 25 ]; then
-                JITTER="Stable"
-              elif [ "$DEV" -lt 75 ]; then
-                JITTER="Moderate"
-              elif [ "$DEV" -lt 150 ]; then
-                JITTER="Unstable"
-              else
-                JITTER="Severe"
-              fi
-
-              # ==============================
-              # Speed ladder
-              # ==============================
-
-              if [ "$CURRENT" -lt 100 ]; then
-                SPEED="⚡"
-              elif [ "$CURRENT" -lt 250 ]; then
-                SPEED="🚀"
-              elif [ "$CURRENT" -lt 500 ]; then
-                SPEED="✈️"
-              elif [ "$CURRENT" -lt 750 ]; then
-                SPEED="🏎️"
-              elif [ "$CURRENT" -lt 1000 ]; then
-                SPEED="🚗"
-              elif [ "$CURRENT" -lt 1500 ]; then
-                SPEED="🏇"
-              elif [ "$CURRENT" -lt 2000 ]; then
-                SPEED="🐢"
-              else
-                SPEED="🐌"
-              fi
 
               # ==============================
               # Adaptive severity
@@ -413,7 +393,7 @@ jobs:
             fi
 
             # ==================================
-            # Debug override
+            # Debug mode
             # ==================================
 
             if [ "$DEBUG_MODE" = "true" ]; then
@@ -472,8 +452,43 @@ jobs:
               '.[$slug].spikes = $spikes' \
               "$DB" > tmp.json && mv tmp.json "$DB"
 
+            # Need 2 consecutive spikes
             if [ "$SPIKES" -lt 2 ] && [ "$DEBUG_MODE" != "true" ]; then
-              continue
+
+              # still append fresh probe history
+              :
+
+            fi
+
+            # ==================================
+            # Append ONLY on fresh probe update
+            # ==================================
+
+            if [ "$LAST_UPDATED" != "$LAST_SEEN" ]; then
+
+              UPDATED="$EXISTING $CURRENT"
+
+              # Keep last 20 samples
+              TRIMMED=$(echo "$UPDATED" | awk '{
+                for(i=NF-19;i<=NF;i++)
+                  if(i>0) printf $i " "
+              }')
+
+              jq \
+                --arg slug "$SLUG" \
+                --arg values "$TRIMMED" \
+                --arg updated "$LAST_UPDATED" \
+                '
+                .[$slug].samples = (
+                  $values
+                  | split(" ")
+                  | map(select(length > 0) | tonumber)
+                )
+                |
+                .[$slug].last_updated = $updated
+                ' \
+                "$HISTORY_DB" > tmp.json && mv tmp.json "$HISTORY_DB"
+
             fi
 
             # ==================================
@@ -500,7 +515,8 @@ jobs:
 
             if [ "$ALERT" -eq 0 ] && [ "$PREV_ACTIVE" = "true" ]; then
 
-              echo "$NAME|$CURRENT|$AVG|$DEV|$SPEED|$SLUG" >> "$TMP_RECOVERY"
+              echo "$NAME|$CURRENT|$AVG|$DEV|$SPEED|$SLUG" \
+                >> "$TMP_RECOVERY"
 
               jq \
                 --arg slug "$SLUG" \
@@ -533,11 +549,13 @@ jobs:
               --argjson avg "$AVG" \
               --argjson dev "$DEV" \
               --argjson weekly "$WEEKLY" \
-              '.[$slug].last_alert = $now |
-               .[$slug].active = true |
-               .[$slug].avg = $avg |
-               .[$slug].deviation = $dev |
-               .[$slug].weekly_spikes = $weekly' \
+              '
+              .[$slug].last_alert = $now |
+              .[$slug].active = true |
+              .[$slug].avg = $avg |
+              .[$slug].deviation = $dev |
+              .[$slug].weekly_spikes = $weekly
+              ' \
               "$DB" > tmp.json && mv tmp.json "$DB"
 
             # ==================================
@@ -551,12 +569,13 @@ jobs:
             # Insights telemetry
             # ==================================
 
-            echo "$CURRENT|$SPEED|$NAME" >> "$TMP_INSIGHT"
+            echo "$CURRENT|$SPEED|$NAME" \
+              >> "$TMP_INSIGHT"
 
           done
 
           # ==================================
-          # Build alert block
+          # Build alert message
           # ==================================
 
           FINAL=""
@@ -597,8 +616,6 @@ jobs:
 
             while IFS="|" read -r NAME CUR AVG DEV SPEED SLUG; do
 
-              [ -z "$NAME" ] && continue
-
               FINAL+="🌐 $NAME\n"
               FINAL+="📉 Latency normalized\n"
               FINAL+="$SPEED Current: $CUR ms\n"
@@ -611,7 +628,7 @@ jobs:
           fi
 
           # ==================================
-          # Performance insights
+          # Performance Insights telemetry
           # ==================================
 
           if [ -s "$TMP_INSIGHT" ]; then
@@ -622,8 +639,6 @@ jobs:
             SORTED_INSIGHT=$(sort -nr "$TMP_INSIGHT" | head -n 3)
 
             while IFS="|" read -r LAT SPEED NAME; do
-
-              [ -z "$LAT" ] && continue
 
               FINAL+="🌐 $NAME\n"
               FINAL+="$SPEED $LAT ms\n\n"
@@ -636,24 +651,34 @@ jobs:
           # Infrastructure latency state
           # ==================================
 
-          FINAL+="━━━━━━━━━━━━━━━━━━\n\n"
-          FINAL+="📡 Infrastructure Latency State\n\n"
+          if [ "$ACTIVE_ALERTS" -gt 0 ] || \
+             [ -s "$TMP_ALERT" ] || \
+             [ -s "$TMP_RECOVERY" ]; then
 
-          if [ "$ACTIVE_ALERTS" -ge 3 ]; then
-            STATE="Critical degradation"
-          elif [ "$ACTIVE_ALERTS" -ge 1 ]; then
-            STATE="Moderate degradation"
-          else
-            STATE="Stable"
+            FINAL+="━━━━━━━━━━━━━━━━━━\n\n"
+            FINAL+="📡 Infrastructure Latency State\n\n"
+
+            if [ "$ACTIVE_ALERTS" -ge 3 ]; then
+              STATE="Critical degradation"
+            elif [ "$ACTIVE_ALERTS" -ge 1 ]; then
+              STATE="Moderate degradation"
+            else
+              STATE="Stable"
+            fi
+
+            FINAL+="• $STATE\n"
+            FINAL+="• Active degraded services: $ACTIVE_ALERTS\n"
+            FINAL+="• Adaptive anomaly detection operational\n"
+            FINAL+="• Rolling baseline telemetry active\n"
+
           fi
 
-          FINAL+="• $STATE\n"
-          FINAL+="• Active degraded services: $ACTIVE_ALERTS\n"
-          FINAL+="• Adaptive anomaly detection operational\n"
-          FINAL+="• Rolling baseline telemetry active\n"
+          # ==================================
+          # Exit silently if no events
+          # ==================================
 
           if [ -z "$FINAL" ]; then
-            FINAL="🟢 No significant latency anomalies detected."
+            exit 0
           fi
 
           LOCAL_TIME=$(TZ="$SUMMARY_TIMEZONE" \
@@ -662,18 +687,18 @@ jobs:
           UTC_TIME=$(TZ="UTC" \
             date +"%H:%M UTC")
 
-          FINAL+="\n\n🕒 $LOCAL_TIME | "
-          FINAL+="🌍 $UTC_TIME"
+          FINAL+="\n\n🕒 $LOCAL_TIME | 🌍 $UTC_TIME"
 
           echo "msg<<EOF" >> $GITHUB_OUTPUT
           echo -e "$FINAL" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
       # ====================================
-      # Send Telegram alert
+      # Send Telegram
       # ====================================
 
       - name: Send Telegram alert
+        if: steps.analyze.outputs.msg != ''
 
         run: |
 
