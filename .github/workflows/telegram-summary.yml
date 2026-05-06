@@ -75,7 +75,7 @@ on:
   # Daily schedule (2:30 UTC/8am IST hardcoded)
   # ========================================
   schedule:
-    - cron: "30 3 * * *"
+    - cron: "5 4 * * *"
 
   # ========================================
   # Manual trigger
