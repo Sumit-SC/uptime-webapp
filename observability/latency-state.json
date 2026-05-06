@@ -16,12 +16,12 @@
     "weekly_spikes": 3
   },
   "portfolio-website": {
-    "spikes": 5,
-    "last_alert": 1778084053,
+    "spikes": 6,
+    "last_alert": 1778097299,
     "active": true,
     "avg": 2576,
     "deviation": 89,
-    "weekly_spikes": 4
+    "weekly_spikes": 5
   },
   "google": {
     "spikes": 0
