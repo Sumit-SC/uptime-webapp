@@ -615,7 +615,7 @@ jobs:
 
           fi
 
-          MSG+="🕒 $LOCAL_TIME\n"
+          MSG+="🕒 $LOCAL_TIME | "
           MSG+="🌍 $UTC_TIME"
 
           echo "msg<<EOF" >> $GITHUB_OUTPUT
