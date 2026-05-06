@@ -1,6 +1,6 @@
 {
   "portfolio-page": {
-    "spikes": 3,
+    "spikes": 0,
     "last_alert": 1778049837,
     "active": true,
     "weekly_spikes": 3,
@@ -8,7 +8,7 @@
     "deviation": 0
   },
   "personal-lab": {
-    "spikes": 3,
+    "spikes": 0,
     "last_alert": 1778049837,
     "active": true,
     "weekly_spikes": 3,
@@ -16,7 +16,7 @@
     "deviation": 0
   },
   "portfolio-website": {
-    "spikes": 3,
+    "spikes": 0,
     "last_alert": 1778049837,
     "active": true,
     "weekly_spikes": 3,
@@ -30,7 +30,7 @@
     "spikes": 0
   },
   "streamio": {
-    "spikes": 3,
+    "spikes": 0,
     "last_alert": 1778049837,
     "active": true,
     "weekly_spikes": 3,
