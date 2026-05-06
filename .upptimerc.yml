@@ -37,7 +37,7 @@ sites:
   # - name: my-web
   #   url: test.com
   - name: Streamio
-    url: idx.theworkpc.com
+    url: https://idx.theworkpc.com
     icon: https://i.postimg.cc/XqWnmDXr/Picsart-25-10-09-08-09-45-867.png
  
     
