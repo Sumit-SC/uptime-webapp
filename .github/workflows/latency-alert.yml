@@ -1,13 +1,22 @@
 # ==========================================
-# LATENCY SPIKE ALERTS
+# ADVANCED LATENCY ALERT SYSTEM
 # ==========================================
 #
-# Detects high response times from Upptime
-# history files and sends Telegram alerts.
+# Detects:
+# ✅ latency spikes
+# ✅ degraded services
+# ✅ persistent slowdowns
+# ✅ recovery events
 #
-# Reads:
+# Uses:
 #   history/summary.json
 #   history/*.yml
+#
+# Sends Telegram alerts with:
+# ✅ severity ladder
+# ✅ speed ladder
+# ✅ adaptive thresholds
+# ✅ performance insights
 #
 # ==========================================
 # REQUIRED GITHUB SECRETS
@@ -17,18 +26,18 @@
 #   Base URL for status history pages
 #
 # CHAT_ID
-#   Telegram chat/group ID
+#   Telegram group/chat ID
 #
 # ALERTS_TOPIC_ID
-#   Telegram forum topic/thread ID
+#   Telegram topic/thread ID
 #
 # SUMMARY_BOT_TOKEN
 #   Telegram bot token
 #
 # SUMMARY_TIMEZONE
-#   Timezone for displayed timestamps
+#   Display timezone
 #
-# Example values:
+# Example:
 #   Asia/Kolkata
 #   Asia/Tokyo
 #   America/New_York
@@ -38,12 +47,12 @@
 # CRON NOTES
 # ==========================================
 #
-# GitHub Actions cron uses UTC ONLY.
+# GitHub cron uses UTC only.
 #
 # "*/30 * * * *"
 # = every 30 minutes
 #
-# Testing:
+# Test mode:
 # "*/5 * * * *"
 #
 # Cron helper:
@@ -51,12 +60,12 @@
 #
 # ==========================================
 
-name: Latency Spike Alerts
+name: Advanced Latency Alerts
 
 on:
 
   # ========================================
-  # Every 30 minutes (UTC)
+  # Every 30 minutes
   # ========================================
   schedule:
     - cron: "*/30 * * * *"
@@ -83,7 +92,18 @@ jobs:
       - uses: actions/checkout@v4
 
       # ====================================
-      # Analyze site latency
+      # Initialize persistent state
+      # ====================================
+      - name: Initialize state
+        run: |
+          mkdir -p history
+
+          if [ ! -f history/latency-state.json ]; then
+            echo "{}" > history/latency-state.json
+          fi
+
+      # ====================================
+      # Analyze latency
       # ====================================
       - name: Analyze latency
         id: analyze
@@ -95,17 +115,22 @@ jobs:
 
         run: |
 
-          mkdir -p .cache
-
           FILE="history/summary.json"
+          STATE_FILE="history/latency-state.json"
 
-          TMP_ALL=$(mktemp)
           TMP_ALERT=$(mktemp)
+          TMP_INSIGHT=$(mktemp)
 
           COUNT=$(jq length "$FILE")
 
+          NOW=$(date +%s)
+
+          ALERT_BLOCK=""
+          RECOVERY_BLOCK=""
+          INSIGHT_BLOCK=""
+
           # ==================================
-          # Iterate over monitored sites
+          # Iterate monitored sites
           # ==================================
 
           for i in $(seq 0 $(($COUNT - 1))); do
@@ -124,38 +149,62 @@ jobs:
 
             CURRENT=$(grep 'responseTime:' "$YML_FILE" | awk '{print $2}')
 
-            # Skip empty latency
+            # Skip invalid latency
             [ -z "$CURRENT" ] && continue
 
-            # Store all latencies for insights
-            echo "$CURRENT|$NAME|$SLUG" >> $TMP_ALL
+            # ==================================
+            # Historical latency average
+            # Uses last 10 entries
+            # ==================================
+
+            HISTORY=$(grep 'responseTime:' "$YML_FILE" \
+              | awk '{print $2}' \
+              | tail -n 10)
+
+            SUM=0
+            COUNT_H=0
+
+            for val in $HISTORY; do
+              if [[ "$val" =~ ^[0-9]+$ ]]; then
+                SUM=$((SUM + val))
+                COUNT_H=$((COUNT_H + 1))
+              fi
+            done
+
+            [ "$COUNT_H" -eq 0 ] && continue
+
+            AVG=$((SUM / COUNT_H))
 
             # ==================================
-            # LATENCY SEVERITY LADDER
+            # Deviation multiplier
             #
-            # 🟢 <150ms      Healthy
-            # ⚡ <500ms      Good
-            # ⚠ <1000ms     Moderate
-            # 🚨 <2500ms    Severe
-            # 🛑 2500ms+    Critical
+            # Example:
+            # avg=100ms current=300ms
+            # multiplier=300%
             # ==================================
 
-            if [ "$CURRENT" -lt 150 ]; then
+            MULT=$((CURRENT * 100 / AVG))
+
+            # ==================================
+            # Severity ladder
+            #
+            # 🟢 Healthy
+            # ⚠ Degraded
+            # 🚨 Severe
+            # 🛑 Critical
+            # ==================================
+
+            if [ "$CURRENT" -lt 500 ] && [ "$MULT" -lt 200 ]; then
 
               LEVEL="🟢"
               ALERT=0
 
-            elif [ "$CURRENT" -lt 500 ]; then
-
-              LEVEL="⚡"
-              ALERT=0
-
-            elif [ "$CURRENT" -lt 1000 ]; then
+            elif [ "$CURRENT" -lt 1000 ] || [ "$MULT" -lt 250 ]; then
 
               LEVEL="⚠"
               ALERT=0
 
-            elif [ "$CURRENT" -lt 2500 ]; then
+            elif [ "$CURRENT" -lt 2500 ] || [ "$MULT" -lt 400 ]; then
 
               LEVEL="🚨"
               ALERT=1
@@ -168,10 +217,41 @@ jobs:
             fi
 
             # ==================================
+            # Speed ladder
+            #
+            # ⚡ <100ms
+            # 🚀 <250ms
+            # ✈️ <500ms
+            # 🏎️ <750ms
+            # 🚗 <1000ms
+            # 🏇 <1500ms
+            # 🐢 <2000ms
+            # 🐌 2000ms+
+            # ==================================
+
+            if [ "$CURRENT" -lt 100 ]; then
+              SPEED="⚡"
+            elif [ "$CURRENT" -lt 250 ]; then
+              SPEED="🚀"
+            elif [ "$CURRENT" -lt 500 ]; then
+              SPEED="✈️"
+            elif [ "$CURRENT" -lt 750 ]; then
+              SPEED="🏎️"
+            elif [ "$CURRENT" -lt 1000 ]; then
+              SPEED="🚗"
+            elif [ "$CURRENT" -lt 1500 ]; then
+              SPEED="🏇"
+            elif [ "$CURRENT" -lt 2000 ]; then
+              SPEED="🐢"
+            else
+              SPEED="🐌"
+            fi
+
+            # ==================================
             # Debug mode
             #
             # Forces alerts >=200ms
-            # Useful for testing Telegram flow
+            # Useful for testing
             # ==================================
 
             if [ "$DEBUG_MODE" = "true" ]; then
@@ -185,86 +265,133 @@ jobs:
 
             fi
 
-            # Skip healthy sites
-            [ "$ALERT" -ne 1 ] && continue
+            # ==================================
+            # Consecutive spike validation
+            #
+            # Require 2 consecutive bad checks
+            # ==================================
+
+            PREV_COUNT=$(jq -r ".\"$SLUG\".spikes // 0" "$STATE_FILE")
+
+            if [ "$ALERT" -eq 1 ]; then
+              SPIKES=$((PREV_COUNT + 1))
+            else
+              SPIKES=0
+            fi
+
+            jq \
+              --arg slug "$SLUG" \
+              --argjson spikes "$SPIKES" \
+              '.[$slug].spikes = $spikes' \
+              "$STATE_FILE" > tmp.json && mv tmp.json "$STATE_FILE"
+
+            if [ "$SPIKES" -lt 2 ] && [ "$DEBUG_MODE" != "true" ]; then
+              continue
+            fi
 
             # ==================================
             # Cooldown logic
             #
-            # Prevents repeated spam alerts
-            #
-            # Current:
             # 7200 sec = 2 hours
             #
-            # NOTE:
-            # GitHub runner cache is ephemeral.
-            # For production-grade persistence,
-            # use artifact/cache/state JSON.
+            # Prevents repeated spam alerts
             # ==================================
 
-            COOLDOWN_FILE=".cache/$SLUG"
+            LAST_ALERT=$(jq -r ".\"$SLUG\".last_alert // 0" "$STATE_FILE")
 
-            NOW=$(date +%s)
-
-            if [ "$DEBUG_MODE" != "true" ] && [ -f "$COOLDOWN_FILE" ]; then
-
-              LAST=$(cat "$COOLDOWN_FILE")
-
-              if [ $((NOW - LAST)) -lt 7200 ]; then
+            if [ "$DEBUG_MODE" != "true" ]; then
+              if [ $((NOW - LAST_ALERT)) -lt 7200 ]; then
                 continue
               fi
-
             fi
 
-            echo "$NOW" > "$COOLDOWN_FILE"
+            # ==================================
+            # Recovery detection
+            # ==================================
 
-            # Store alert candidate
-            echo "$CURRENT|$LEVEL|$NAME|$SLUG" >> $TMP_ALERT
+            PREV_STATUS=$(jq -r ".\"$SLUG\".active // false" "$STATE_FILE")
+
+            if [ "$ALERT" -eq 0 ] && [ "$PREV_STATUS" = "true" ]; then
+
+              RECOVERY_BLOCK+="✅ Recovery Detected\n"
+              RECOVERY_BLOCK+="🌐 $NAME\n"
+              RECOVERY_BLOCK+="🚀 Current: $CURRENT ms\n"
+              RECOVERY_BLOCK+="📊 Avg: $AVG ms\n"
+              RECOVERY_BLOCK+="🔗 $STATUS_BASE_URL/$SLUG\n\n"
+
+              jq \
+                --arg slug "$SLUG" \
+                '.[$slug].active = false' \
+                "$STATE_FILE" > tmp.json && mv tmp.json "$STATE_FILE"
+
+              continue
+            fi
+
+            # Skip healthy sites
+            [ "$ALERT" -ne 1 ] && continue
+
+            # ==================================
+            # Save alert state
+            # ==================================
+
+            jq \
+              --arg slug "$SLUG" \
+              --argjson now "$NOW" \
+              '.[$slug].last_alert = $now | .[$slug].active = true' \
+              "$STATE_FILE" > tmp.json && mv tmp.json "$STATE_FILE"
+
+            # ==================================
+            # Store alerts
+            # ==================================
+
+            echo "$CURRENT|$LEVEL|$SPEED|$NAME|$SLUG|$AVG|$MULT" >> $TMP_ALERT
+
+            # ==================================
+            # Store insights
+            # ==================================
+
+            echo "$CURRENT|$NAME" >> $TMP_INSIGHT
 
           done
 
           # ==================================
-          # Critical alerts
-          #
-          # Only show TOP 3 worst offenders
+          # Top 3 worst alerts
           # ==================================
 
-          ALERT_BLOCK=""
-
-          SORTED_ALERT=$(sort -nr $TMP_ALERT | head -n 3)
+          SORTED=$(sort -nr $TMP_ALERT | head -n 3)
 
           INDEX=1
 
-          while IFS="|" read -r LAT LEVEL NAME SLUG; do
+          while IFS="|" read -r CUR LEVEL SPEED NAME SLUG AVG MULT; do
 
-            [ -z "$LAT" ] && continue
+            [ -z "$CUR" ] && continue
 
             ALERT_BLOCK+="$INDEX. $LEVEL $NAME\n"
-            ALERT_BLOCK+="   ⚡ $LAT ms\n"
+            ALERT_BLOCK+="   $SPEED $CUR ms\n"
+            ALERT_BLOCK+="   📊 Avg: $AVG ms\n"
+            ALERT_BLOCK+="   📈 Deviation: ${MULT}%\n"
             ALERT_BLOCK+="   🔗 $STATUS_BASE_URL/$SLUG\n\n"
 
             INDEX=$((INDEX+1))
 
-          done <<< "$SORTED_ALERT"
+          done <<< "$SORTED"
 
           # ==================================
           # Performance insights
-          #
-          # Shows slowest sites overall
           # ==================================
 
           INSIGHT_BLOCK="📊 Performance Insights\n\n"
 
-          SORTED_ALL=$(sort -nr $TMP_ALL | head -n 3)
+          SORTED_INSIGHT=$(sort -nr $TMP_INSIGHT | head -n 3)
 
-          while IFS="|" read -r LAT NAME SLUG; do
+          while IFS="|" read -r LAT NAME; do
 
             [ -z "$LAT" ] && continue
 
             INSIGHT_BLOCK+="🌐 $NAME\n"
             INSIGHT_BLOCK+="⚡ $LAT ms\n\n"
 
-          done <<< "$SORTED_ALL"
+          done <<< "$SORTED_INSIGHT"
 
           # ==================================
           # Final Telegram message
@@ -274,8 +401,16 @@ jobs:
 
           if [ -n "$ALERT_BLOCK" ]; then
 
-            FINAL+="🚨 Critical Alerts\n\n"
+            FINAL+="🚨 Critical Latency Alerts\n\n"
             FINAL+="$ALERT_BLOCK"
+            FINAL+="━━━━━━━━━━━━━━━━━━\n\n"
+
+          fi
+
+          if [ -n "$RECOVERY_BLOCK" ]; then
+
+            FINAL+="✅ Recovery Events\n\n"
+            FINAL+="$RECOVERY_BLOCK"
             FINAL+="━━━━━━━━━━━━━━━━━━\n\n"
 
           fi
@@ -288,14 +423,12 @@ jobs:
           FINAL+="🕒 $LOCAL_TIME\n"
           FINAL+="🌍 $UTC_TIME"
 
-          echo "alert=true" >> $GITHUB_OUTPUT
-
           echo "msg<<EOF" >> $GITHUB_OUTPUT
           echo -e "$FINAL" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
       # ====================================
-      # Send Telegram message
+      # Send Telegram alert
       # ====================================
       - name: Send Telegram
         run: |
@@ -315,3 +448,17 @@ jobs:
             "https://api.telegram.org/bot${{ secrets.SUMMARY_BOT_TOKEN }}/sendMessage" \
             -H "Content-Type: application/json" \
             -d "$PAYLOAD"
+
+      # ====================================
+      # Persist latency state
+      # ====================================
+      - name: Commit latency state
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+
+          git add history/latency-state.json
+
+          git diff --cached --quiet || git commit -m "Update latency state"
+
+          git push
