@@ -252,36 +252,58 @@ jobs:
             # ==================================
 
             CURRENT=$(grep 'responseTime:' "$YML_FILE" | awk '{print $2}')
+            LAST_UPDATED=$(grep 'lastUpdated:' "$YML_FILE" | awk '{print $2}')
 
             [ -z "$CURRENT" ] && CURRENT=99999
+
+            LAST_SEEN=$(jq -r \
+            --arg slug "$SLUG" \
+            '.[$slug].last_seen_update // ""' \
+            "$DB")
 
             # ==================================
             # Persistent rolling history
             # ==================================
 
-            EXISTING=$(jq -r \
+            # ==================================
+            # Append ONLY on fresh probe update
+            # ==================================
+
+            if [ "$LAST_UPDATED" != "$LAST_SEEN" ]; then
+
+              EXISTING=$(jq -r \
               --arg slug "$SLUG" \
               '.[$slug] // [] | join(" ")' \
               "$HISTORY_DB")
 
-            UPDATED="$EXISTING $CURRENT"
+              UPDATED="$EXISTING $CURRENT"
 
-            # Keep last 20 samples only
-            TRIMMED=$(echo "$UPDATED" | awk '{
+              # Keep last 20 samples only
+              TRIMMED=$(echo "$UPDATED" | awk '{
               for(i=NF-19;i<=NF;i++)
-                if(i>0) printf $i " "
-            }')
+              if(i>0) printf $i " "
+              }')
 
-            jq \
+              # Save rolling history
+              jq \
               --arg slug "$SLUG" \
               --arg values "$TRIMMED" \
               '.[$slug] = ($values | split(" ") | map(select(length > 0) | tonumber))' \
               "$HISTORY_DB" > tmp.json && mv tmp.json "$HISTORY_DB"
 
-            HISTORY=$(jq -r \
+              # Save last seen update timestamp
+              jq \
               --arg slug "$SLUG" \
-              '.[$slug][]' \
-              "$HISTORY_DB")
+              --arg updated "$LAST_UPDATED" \
+              '.[$slug].last_seen_update = $updated' \
+              "$DB" > tmp.json && mv tmp.json "$DB"
+
+            fi
+
+            HISTORY=$(jq -r \
+            --arg slug "$SLUG" \
+            '.[$slug] // [] | join(" ")' \
+            "$HISTORY_DB")
 
             SUM=0
             COUNT_H=0
