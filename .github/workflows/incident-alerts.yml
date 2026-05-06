@@ -1,4 +1,5 @@
 # ==========================================
+# ==========================================
 # INCIDENT ALERT SYSTEM
 # ==========================================
 #
@@ -41,8 +42,28 @@
 #   UTC
 #
 # ==========================================
+# ==========================================
+# ADVANCED INCIDENT ALERT SYSTEM
+# ==========================================
+#
+# Features:
+#
+# ✅ Incident open alerts
+# ✅ Recovery alerts
+# ✅ Downtime duration calculation
+# ✅ MTTR tracking
+# ✅ Incident frequency tracking
+# ✅ Weekly reporting support
+# ✅ Severity classification
+# ✅ Latency speed ladder
+# ✅ Health/jitter indicators
+# ✅ Telegram integration
+# ✅ Persistent state tracking
+# ==========================================
 
-name: Incident Alerts
+
+
+name: Advanced Incident Alerts
 
 on:
 
@@ -54,19 +75,42 @@ on:
       - opened
       - closed
 
+  # ========================================
+  # Weekly report generation
+  # ========================================
+  schedule:
+    - cron: "0 3 * * 1"
+
+  workflow_dispatch:
+
 jobs:
-  alert:
+
+  # ========================================
+  # INCIDENT / RECOVERY ALERTS
+  # ========================================
+  incident-alert:
+
+    if: github.event_name == 'issues'
+
     runs-on: ubuntu-latest
 
     steps:
 
-      # ====================================
-      # Checkout repository
-      # ====================================
       - uses: actions/checkout@v4
 
       # ====================================
-      # Filter only Upptime incidents
+      # Initialize state tracking
+      # ====================================
+      - name: Initialize incident state
+        run: |
+          mkdir -p history
+
+          if [ ! -f history/incident-metrics.json ]; then
+            echo '{}' > history/incident-metrics.json
+          fi
+
+      # ====================================
+      # Filter Upptime issues only
       # ====================================
       - name: Filter issues
         id: filter
@@ -80,17 +124,14 @@ jobs:
             echo "valid=false" >> $GITHUB_OUTPUT
           fi
 
-      # ====================================
-      # Ignore unrelated issues
-      # ====================================
       - name: Stop if irrelevant
         if: steps.filter.outputs.valid != 'true'
         run: exit 0
 
       # ====================================
-      # Build incident message
+      # Build advanced incident message
       # ====================================
-      - name: Build Telegram message
+      - name: Build incident message
         id: build
 
         env:
@@ -109,6 +150,9 @@ jobs:
 
           INCIDENT_URL="$INCIDENT_BASE_URL/$NUMBER"
 
+          FILE="history/summary.json"
+          METRICS_FILE="history/incident-metrics.json"
+
           # ==================================
           # Clean site name
           # ==================================
@@ -120,10 +164,8 @@ jobs:
             | xargs)
 
           # ==================================
-          # Find matching slug
+          # Get slug
           # ==================================
-
-          FILE="history/summary.json"
 
           SLUG=$(jq -r \
             --arg site "$SITE" \
@@ -135,7 +177,7 @@ jobs:
           STATUS_URL="$STATUS_BASE_URL/$SLUG"
 
           # ==================================
-          # Read latest latency
+          # Latest latency
           # ==================================
 
           YML_FILE="history/$SLUG.yml"
@@ -175,7 +217,7 @@ jobs:
           fi
 
           # ==================================
-          # Uptime %
+          # Uptime snapshot
           # ==================================
 
           UPTIME=$(jq -r \
@@ -187,6 +229,7 @@ jobs:
           # Downtime duration
           # ==================================
 
+          DIFF=0
           DURATION="N/A"
 
           if [ "$ACTION" = "closed" ]; then
@@ -240,7 +283,7 @@ jobs:
           fi
 
           # ==================================
-          # Jitter / degradation indicator
+          # Jitter / health indicator
           # ==================================
 
           JITTER="Stable"
@@ -258,7 +301,53 @@ jobs:
           fi
 
           # ==================================
-          # Local + UTC timestamps
+          # MTTR + incident tracking
+          # ==================================
+
+          INCIDENTS=$(jq -r \
+            --arg slug "$SLUG" \
+            '.[$slug].incidents // 0' \
+            "$METRICS_FILE")
+
+          TOTAL_DOWNTIME=$(jq -r \
+            --arg slug "$SLUG" \
+            '.[$slug].downtime // 0' \
+            "$METRICS_FILE")
+
+          if [ "$ACTION" = "closed" ]; then
+
+            INCIDENTS=$((INCIDENTS + 1))
+            TOTAL_DOWNTIME=$((TOTAL_DOWNTIME + DIFF))
+
+            MTTR=$((TOTAL_DOWNTIME / INCIDENTS))
+
+            jq \
+              --arg slug "$SLUG" \
+              --argjson incidents "$INCIDENTS" \
+              --argjson downtime "$TOTAL_DOWNTIME" \
+              --argjson mttr "$MTTR" \
+              '.[$slug].incidents = $incidents |
+               .[$slug].downtime = $downtime |
+               .[$slug].mttr = $mttr' \
+              "$METRICS_FILE" > tmp.json && mv tmp.json "$METRICS_FILE"
+
+          else
+
+            MTTR=$(jq -r \
+              --arg slug "$SLUG" \
+              '.[$slug].mttr // 0' \
+              "$METRICS_FILE")
+
+          fi
+
+          # ==================================
+          # Human-readable MTTR
+          # ==================================
+
+          MTTR_MIN=$((MTTR / 60))
+
+          # ==================================
+          # Time formatting
           # ==================================
 
           LOCAL_TIME=$(TZ="$SUMMARY_TIMEZONE" \
@@ -268,7 +357,7 @@ jobs:
             date +"%H:%M UTC")
 
           # ==================================
-          # DOWN event
+          # DOWN EVENT
           # ==================================
 
           if [ "$ACTION" = "opened" ]; then
@@ -284,14 +373,15 @@ jobs:
             fi
 
             MSG+="📊 Health: $JITTER\n"
-            MSG+="🧭 Detection: Upptime\n"
+            MSG+="📉 Incident Count: $INCIDENTS\n"
+            MSG+="📘 MTTR: ${MTTR_MIN} mins\n"
             MSG+="#Incident-$NUMBER\n\n"
 
             MSG+="🔗 Incident: $INCIDENT_URL\n"
             MSG+="🔗 Status: $STATUS_URL\n\n"
 
           # ==================================
-          # RECOVERY event
+          # RECOVERY EVENT
           # ==================================
 
           else
@@ -308,6 +398,8 @@ jobs:
 
             MSG+="📊 Health: $JITTER\n"
             MSG+="⏱ Downtime: $DURATION\n"
+            MSG+="📉 Incident Count: $INCIDENTS\n"
+            MSG+="📘 MTTR: ${MTTR_MIN} mins\n"
             MSG+="#Incident-$NUMBER\n\n"
 
             MSG+="🔗 Incident: $INCIDENT_URL\n"
@@ -331,6 +423,95 @@ jobs:
           PAYLOAD=$(jq -n \
             --arg chat_id "${{ secrets.CHAT_ID }}" \
             --arg text "${{ steps.build.outputs.msg }}" \
+            --argjson thread_id ${{ secrets.ALERTS_TOPIC_ID }} \
+            '{
+              chat_id: $chat_id,
+              message_thread_id: $thread_id,
+              text: $text,
+              disable_web_page_preview: true
+            }')
+
+          curl -s -X POST \
+            "https://api.telegram.org/bot${{ secrets.SUMMARY_BOT_TOKEN }}/sendMessage" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD"
+
+      # ====================================
+      # Persist metrics
+      # ====================================
+      - name: Commit metrics
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+
+          git add history/incident-metrics.json
+
+          git diff --cached --quiet || git commit -m "Update incident metrics"
+
+          git push
+
+  # ========================================
+  # WEEKLY INCIDENT REPORT
+  # ========================================
+  weekly-report:
+
+    if: github.event_name == 'schedule'
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - uses: actions/checkout@v4
+
+      - name: Build weekly report
+        id: report
+
+        env:
+          SUMMARY_TIMEZONE: ${{ secrets.SUMMARY_TIMEZONE }}
+
+        run: |
+
+          FILE="history/incident-metrics.json"
+
+          REPORT="📊 Weekly Incident Report\n\n"
+
+          TOP=$(jq -r '
+            to_entries
+            | sort_by(-.value.incidents)
+            | .[:5]
+            | .[]
+            | "\(.key)|\(.value.incidents)|\(.value.mttr // 0)"
+          ' "$FILE")
+
+          INDEX=1
+
+          while IFS="|" read -r SITE INCIDENTS MTTR; do
+
+            [ -z "$SITE" ] && continue
+
+            REPORT+="$INDEX. 🌐 $SITE\n"
+            REPORT+="   📉 Incidents: $INCIDENTS\n"
+            REPORT+="   📘 MTTR: $((MTTR / 60)) mins\n\n"
+
+            INDEX=$((INDEX+1))
+
+          done <<< "$TOP"
+
+          LOCAL_TIME=$(TZ="$SUMMARY_TIMEZONE" \
+            date +"%d %b %Y | %I:%M %p %Z")
+
+          REPORT+="🕒 $LOCAL_TIME"
+
+          echo "msg<<EOF" >> $GITHUB_OUTPUT
+          echo -e "$REPORT" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Send weekly report
+        run: |
+
+          PAYLOAD=$(jq -n \
+            --arg chat_id "${{ secrets.CHAT_ID }}" \
+            --arg text "${{ steps.report.outputs.msg }}" \
             --argjson thread_id ${{ secrets.ALERTS_TOPIC_ID }} \
             '{
               chat_id: $chat_id,
