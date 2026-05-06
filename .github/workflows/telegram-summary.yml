@@ -243,13 +243,21 @@ jobs:
             # ==================================
             # Instability tracking
             # ==================================
+            # Reads observability telemetry from:
+            # observability/latency-state.json
+            #
+            # This file stores:
+            # - spike counters
+            # - degraded services
+            # - instability analytics
+            #
 
-            if [ -f "history/latency-state.json" ]; then
+            if [ -f "observability/latency-state.json" ]; then
 
               SPIKES=$(jq -r \
                 --arg slug "$SLUG" \
                 '.[$slug].weekly_spikes // 0' \
-                history/latency-state.json)
+                observability/latency-state.json)
 
               if [ "$SPIKES" -gt "$MOST_SPIKES" ]; then
                 MOST_SPIKES="$SPIKES"
