@@ -48,17 +48,22 @@
 #
 # CHAT_ID
 #   Telegram group/chat ID.
+#   Example:
+#   -1001234567890
 #
-# ALERTS_TOPIC_ID
+# TOPIC_ID
 #   Telegram forum topic/thread ID.
+#   Example:
+#   12
 #
 # SUMMARY_BOT_TOKEN
 #   Telegram bot token.
+#   Example:
+#   123456789:AAExampleBotTokenHere
 #
 # SUMMARY_TIMEZONE
 #   Display timezone for messages.
-#
-# Examples:
+#   Examples:
 #   Asia/Kolkata
 #   Asia/Tokyo
 #   UTC
@@ -79,17 +84,46 @@
 # ==========================================
 # CRON NOTES
 # ==========================================
+# ==========================================
+# CRON NOTES
+# ==========================================
 #
-# GitHub cron uses UTC only.
+# GitHub Actions cron uses UTC ONLY.
 #
+# IST = UTC + 5:30
+#
+# Examples:
+#
+# 02:30 UTC = 08:00 AM IST
+# 03:00 UTC = 08:30 AM IST
+#
+# Cron helper:
+# https://crontab.guru/
+#
+# Timezone converter:
+# https://www.worldtimebuddy.com/
+#
+# IMPORTANT:
+# GitHub scheduled workflows may delay
+# by several minutes during high load.
+#
+# -------------------------------------
 # Current:
-# */30 * * * *
-# = every 30 minutes
+# -------------------------------------
+# Every 30 minutes:
 #
+# */30 * * * *
+#
+# -------------------------------------
 # Weekly report:
+# -------------------------------------
 # 0 3 * * 1
 # = Monday 03:00 UTC
 #
+# ==========================================
+
+# ==========================================
+# Actual Working Code ⬇️
 # ==========================================
 
 name: Advanced Latency Observability
