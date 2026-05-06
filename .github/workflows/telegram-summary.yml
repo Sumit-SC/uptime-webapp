@@ -2,8 +2,10 @@
 # TELEGRAM UPTIME SUMMARY
 # ==========================================
 #
-# Sends a Telegram uptime summary generated
-# from Upptime history files.
+# Purpose:
+#
+# Sends a visual Telegram uptime summary
+# using Upptime-generated history files.
 #
 # Reads:
 #   history/summary.json
@@ -14,27 +16,35 @@
 # ==========================================
 #
 # DASHBOARD_URL
-#   Main uptime dashboard URL
+#   Main uptime dashboard URL.
+#   Example:
+#   https://status.example.com
 #
 # STATUS_BASE_URL
-#   Base URL for status history pages
+#   Base URL for history/status pages.
+#   Example:
+#   https://status.example.com/history
 #
 # CHAT_ID
-#   Telegram chat/group ID
+#   Telegram group/chat ID.
+#   Example:
+#   -1001234567890
 #
 # TOPIC_ID
-#   Telegram forum topic/thread ID
+#   Telegram forum topic/thread ID.
+#   Example:
+#   12
 #
 # SUMMARY_BOT_TOKEN
-#   Telegram bot token
+#   Telegram bot token.
+#   Example:
+#   123456789:AAExampleBotTokenHere
 #
 # SUMMARY_TIMEZONE
-#   Timezone for displayed timestamps
-#
-# Example values:
+#   Display timezone for messages.
+#   Examples:
 #   Asia/Kolkata
 #   Asia/Tokyo
-#   America/New_York
 #   UTC
 #
 # ==========================================
@@ -60,22 +70,52 @@
 # GitHub scheduled workflows may delay
 # by several minutes during high load.
 #
-# For testing:
-# cron: "*/5 * * * *"
+# ------------------------------------------
+# TEST MODE (CURRENT)
+# ------------------------------------------
 #
+# Every 5 minutes:
+#
+# */5 * * * *
+#
+# Useful because GitHub scheduled workflows
+# may delay by several minutes.
+#
+# ------------------------------------------
+# PRODUCTION MODE
+# ------------------------------------------
+#
+# Daily 8:05 AM IST:
+# IST = UTC +5:30
+# 08:05 IST = 02:35 UTC
+#
+# Production cron:
+#
+# 35 2 * * *
+#
+# Replace the test cron with above after
+# verifying scheduled workflows work.
+#
+# Cron helper:
+# https://crontab.guru/
+#
+
 # ==========================================
 # Actual Working Code ⬇️
-# ========================================
+# ==========================================
+
 
 name: Telegram Upptime Summary & Stats Monitor
 
 on:
 
   # ========================================
-  # Daily schedule (2:30 UTC/8am IST hardcoded)
+  # TEST MODE
+  #
+  # Every 5 minutes
   # ========================================
   schedule:
-    - cron: "5 4 * * *"
+    - cron: "*/5 * * * *"
 
   # ========================================
   # Manual trigger
@@ -83,6 +123,7 @@ on:
   workflow_dispatch:
 
 jobs:
+
   summary:
     runs-on: ubuntu-latest
 
@@ -110,6 +151,7 @@ jobs:
       # ====================================
       - name: Build summary
         id: build
+
         run: |
 
           SUMMARY="📊 Upptime Monitor Summary\n\n"
@@ -124,10 +166,20 @@ jobs:
           DOWN_BLOCK=""
           UP_BLOCK=""
 
-          COUNT=$(jq length "$FILE")
-
           LAT_SUM=0
           LAT_COUNT=0
+
+          SLOWEST_SITE=""
+          SLOWEST_LAT=0
+
+          MOST_UNSTABLE=""
+          MOST_SPIKES=0
+
+          COUNT=$(jq length "$FILE")
+
+          # ==================================
+          # Iterate services
+          # ==================================
 
           for i in $(seq 0 $(($COUNT - 1))); do
 
@@ -136,20 +188,25 @@ jobs:
             UPTIME=$(jq -r ".[$i].uptime" "$FILE")
             SLUG=$(jq -r ".[$i].slug" "$FILE")
 
-            TOTAL=$((TOTAL+1))
+            TOTAL=$((TOTAL + 1))
+
+            # ==================================
+            # Service state
+            # ==================================
 
             if [ "$STATUS" = "up" ]; then
               ICON="🟢"
             else
               ICON="🔴"
-              DOWN=$((DOWN+1))
+              DOWN=$((DOWN + 1))
             fi
 
             # ==================================
-            # Read latency from history YAML
+            # Read latest latency
             # ==================================
 
             YML_FILE="history/$SLUG.yml"
+
             LATENCY=""
 
             if [ -f "$YML_FILE" ]; then
@@ -157,16 +214,40 @@ jobs:
             fi
 
             # ==================================
-            # Latency ladder
+            # Track slowest service
+            # ==================================
+
+            if [[ "$LATENCY" =~ ^[0-9]+$ ]]; then
+
+              if [ "$LATENCY" -gt "$SLOWEST_LAT" ]; then
+                SLOWEST_LAT="$LATENCY"
+                SLOWEST_SITE="$NAME"
+              fi
+
+            fi
+
+            # ==================================
+            # Optional instability tracking
             #
-            # ⚡ <100ms
-            # 🚀 <250ms
-            # ✈️ <500ms
-            # 🏎️ <750ms
-            # 🚗 <1000ms
-            # 🏇 <1500ms
-            # 🐢 <2000ms
-            # 🐌 2000ms+
+            # Reads from latency-state.json
+            # ==================================
+
+            if [ -f "history/latency-state.json" ]; then
+
+              SPIKES=$(jq -r \
+                --arg slug "$SLUG" \
+                '.[$slug].weekly_spikes // 0' \
+                history/latency-state.json)
+
+              if [ "$SPIKES" -gt "$MOST_SPIKES" ]; then
+                MOST_SPIKES="$SPIKES"
+                MOST_UNSTABLE="$NAME"
+              fi
+
+            fi
+
+            # ==================================
+            # Latency speed ladder
             # ==================================
 
             if [ "$STATUS" = "down" ]; then
@@ -199,7 +280,9 @@ jobs:
               LAT_LABEL="$EMOJI $LATENCY ms"
 
             else
+
               LAT_LABEL="—"
+
             fi
 
             # ==================================
@@ -239,9 +322,14 @@ jobs:
               for j in $(seq 1 $EMPTY); do
                 HBAR+="⬜"
               done
+
             fi
 
             STATUS_URL="$STATUS_BASE_URL/$SLUG"
+
+            # ==================================
+            # Service block
+            # ==================================
 
             BLOCK="$INDEX. $ICON $NAME\n"
             BLOCK+="   $LAT_LABEL | 📈 $HBAR | ⏱ $UPTIME\n"
@@ -253,14 +341,14 @@ jobs:
               UP_BLOCK+="$BLOCK"
             fi
 
-            INDEX=$((INDEX+1))
+            INDEX=$((INDEX + 1))
 
           done
 
           SUMMARY+="$DOWN_BLOCK$UP_BLOCK"
 
           # ==================================
-          # Overall metrics
+          # Overall health metrics
           # ==================================
 
           UP=$((TOTAL - DOWN))
@@ -279,6 +367,10 @@ jobs:
 
           FILLED=$((HEALTH / 20))
           EMPTY=$((5 - FILLED))
+
+          # ==================================
+          # Health bar color
+          # ==================================
 
           if [ "$HEALTH" -ge 100 ]; then
             COLOR="🟩"
@@ -302,13 +394,53 @@ jobs:
             BAR+="⬜"
           done
 
-          LOCAL_TIME=$(TZ="$SUMMARY_TIMEZONE" date +"%d %b %Y | %I:%M %p %Z")
-          UTC_TIME=$(TZ="UTC" date +"%H:%M UTC")
+          # ==================================
+          # Optional trend insights
+          # ==================================
+
+          TREND="Stable"
+
+          if [ "$AVG_LAT" -gt 1500 ]; then
+            TREND="Critical"
+          elif [ "$AVG_LAT" -gt 1000 ]; then
+            TREND="Degrading"
+          elif [ "$AVG_LAT" -gt 500 ]; then
+            TREND="Moderate"
+          fi
+
+          # ==================================
+          # Time formatting
+          # ==================================
+
+          LOCAL_TIME=$(TZ="$SUMMARY_TIMEZONE" \
+            date +"%d %b %Y | %I:%M %p %Z")
+
+          UTC_TIME=$(TZ="UTC" \
+            date +"%H:%M UTC")
+
+          # ==================================
+          # Final metrics block
+          # ==================================
 
           SUMMARY+="━━━━━━━━━━━━━━━━━━\n\n"
+
           SUMMARY+="📈 Health: $BAR $HEALTH%\n"
           SUMMARY+="⚡ Avg Latency: $AVG_LAT ms\n"
-          SUMMARY+="🔴 Down: $DOWN / $TOTAL\n\n"
+          SUMMARY+="🔴 Down: $DOWN / $TOTAL\n"
+
+          # ==================================
+          # Extra insights
+          # ==================================
+
+          if [ -n "$SLOWEST_SITE" ]; then
+            SUMMARY+="🐌 Slowest: $SLOWEST_SITE ($SLOWEST_LAT ms)\n"
+          fi
+
+          if [ "$MOST_SPIKES" -gt 0 ]; then
+            SUMMARY+="🚨 Unstable: $MOST_UNSTABLE ($MOST_SPIKES spikes)\n"
+          fi
+
+          SUMMARY+="📊 Trend: $TREND\n\n"
 
           SUMMARY+="🕒 $LOCAL_TIME\n"
           SUMMARY+="🌍 $UTC_TIME\n"
@@ -322,6 +454,7 @@ jobs:
       # Send Telegram message
       # ====================================
       - name: Send Telegram message
+
         run: |
 
           PAYLOAD=$(jq -n \
@@ -339,3 +472,4 @@ jobs:
             "https://api.telegram.org/bot${{ secrets.SUMMARY_BOT_TOKEN }}/sendMessage" \
             -H "Content-Type: application/json" \
             -d "$PAYLOAD"
+            
