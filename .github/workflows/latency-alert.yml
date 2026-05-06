@@ -146,13 +146,7 @@
 # Actual Working Code ⬇️
 # ==========================================
 
-# ==========================================
-
 name: Advanced Latency Observability
-
-# ==========================================
-# Prevent concurrent writes
-# ==========================================
 
 concurrency:
   group: latency-observability
@@ -160,19 +154,11 @@ concurrency:
 
 on:
 
-  # ========================================
-  # Latency checks
-  # ========================================
-
   schedule:
     - cron: "*/30 * * * *"
 
     # Weekly analytics
     - cron: "0 3 * * 1"
-
-  # ========================================
-  # Manual trigger
-  # ========================================
 
   workflow_dispatch:
     inputs:
@@ -189,7 +175,6 @@ jobs:
 
   latency-check:
 
-    # Skip weekly cron
     if: github.event.schedule != '0 3 * * 1'
 
     runs-on: ubuntu-latest
@@ -209,16 +194,20 @@ jobs:
         uses: actions/checkout@v4
 
       # ====================================
-      # Initialize persistent DB
+      # Initialize persistent DBs
       # ====================================
 
-      - name: Initialize latency DB
+      - name: Initialize latency DBs
         run: |
 
           mkdir -p history
 
           if [ ! -f history/latency-state.json ]; then
             echo "{}" > history/latency-state.json
+          fi
+
+          if [ ! -f history/latency-history.json ]; then
+            echo "{}" > history/latency-history.json
           fi
 
       # ====================================
@@ -232,6 +221,7 @@ jobs:
 
           FILE="history/summary.json"
           DB="history/latency-state.json"
+          HISTORY_DB="history/latency-history.json"
 
           TMP_ALERT=$(mktemp)
           TMP_INSIGHT=$(mktemp)
@@ -266,6 +256,54 @@ jobs:
             [ -z "$CURRENT" ] && CURRENT=99999
 
             # ==================================
+            # Persistent rolling history
+            # ==================================
+
+            EXISTING=$(jq -r \
+              --arg slug "$SLUG" \
+              '.[$slug] // [] | join(" ")' \
+              "$HISTORY_DB")
+
+            UPDATED="$EXISTING $CURRENT"
+
+            # Keep last 20 samples only
+            TRIMMED=$(echo "$UPDATED" | awk '{
+              for(i=NF-19;i<=NF;i++)
+                if(i>0) printf $i " "
+            }')
+
+            jq \
+              --arg slug "$SLUG" \
+              --arg values "$TRIMMED" \
+              '.[$slug] = ($values | split(" ") | map(select(length > 0) | tonumber))' \
+              "$HISTORY_DB" > tmp.json && mv tmp.json "$HISTORY_DB"
+
+            HISTORY=$(jq -r \
+              --arg slug "$SLUG" \
+              '.[$slug][]' \
+              "$HISTORY_DB")
+
+            SUM=0
+            COUNT_H=0
+
+            for val in $HISTORY; do
+
+              if [[ "$val" =~ ^[0-9]+$ ]]; then
+
+                SUM=$((SUM + val))
+                COUNT_H=$((COUNT_H + 1))
+
+              fi
+
+            done
+
+            [ "$COUNT_H" -eq 0 ] && continue
+
+            AVG=$((SUM / COUNT_H))
+
+            [ "$AVG" -le 0 ] && AVG=1
+
+            # ==================================
             # DOWN state handling
             # ==================================
 
@@ -274,41 +312,11 @@ jobs:
               LEVEL="🛑"
               SPEED="💀"
 
-              AVG=0
               DEV=999
-
               ALERT=1
               JITTER="Critical"
 
             else
-
-              # ==============================
-              # Rolling average
-              # ==============================
-
-              HISTORY=$(grep 'responseTime:' "$YML_FILE" \
-                | awk '{print $2}' \
-                | tail -n 10)
-
-              SUM=0
-              COUNT_H=0
-
-              for val in $HISTORY; do
-
-                if [[ "$val" =~ ^[0-9]+$ ]]; then
-
-                  SUM=$((SUM + val))
-                  COUNT_H=$((COUNT_H + 1))
-
-                fi
-
-              done
-
-              [ "$COUNT_H" -eq 0 ] && continue
-
-              AVG=$((SUM / COUNT_H))
-
-              [ "$AVG" -le 0 ] && AVG=1
 
               # ==============================
               # TRUE deviation
@@ -365,7 +373,7 @@ jobs:
 
               elif [ "$DEV" -lt 75 ]; then
 
-                LEVEL="⚠"
+                LEVEL="⚠️"
                 ALERT=0
 
               elif [ "$DEV" -lt 200 ]; then
@@ -392,6 +400,7 @@ jobs:
 
                 ALERT=1
                 LEVEL="🧪"
+                JITTER="Debug/Test Mode"
 
               else
 
@@ -486,7 +495,9 @@ jobs:
 
             [ "$ALERT" -ne 1 ] && continue
 
-            ACTIVE_ALERTS=$((ACTIVE_ALERTS + 1))
+            if [ "$DEBUG_MODE" != "true" ]; then
+              ACTIVE_ALERTS=$((ACTIVE_ALERTS + 1))
+            fi
 
             # ==================================
             # Update DB state
@@ -619,17 +630,9 @@ jobs:
           FINAL+="• Adaptive anomaly detection operational\n"
           FINAL+="• Rolling baseline telemetry active\n"
 
-          # ==================================
-          # Empty report suppression
-          # ==================================
-
           if [ -z "$FINAL" ]; then
             FINAL="🟢 No significant latency anomalies detected."
           fi
-
-          # ==================================
-          # Time formatting
-          # ==================================
 
           LOCAL_TIME=$(TZ="$SUMMARY_TIMEZONE" \
             date +"%d %b %Y | %I:%M %p %Z")
@@ -680,6 +683,7 @@ jobs:
           git config user.email "actions@github.com"
 
           git add history/latency-state.json
+          git add history/latency-history.json
 
           git diff --cached --quiet && exit 0
 
@@ -698,94 +702,3 @@ jobs:
           done
 
           exit 1
-
-  # ========================================
-  # WEEKLY LATENCY ANALYTICS
-  # ========================================
-
-  weekly-report:
-
-    if: github.event.schedule == '0 3 * * 1'
-
-    runs-on: ubuntu-latest
-
-    steps:
-
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      # ====================================
-      # Build weekly report
-      # ====================================
-
-      - name: Build report
-        id: report
-
-        env:
-          SUMMARY_TIMEZONE: ${{ secrets.SUMMARY_TIMEZONE }}
-
-        run: |
-
-          FILE="history/latency-state.json"
-
-          REPORT="📊 Weekly Latency Analytics\n\n"
-
-          TOP=$(jq -r '
-            to_entries
-            | sort_by(-(.value.weekly_spikes // 0))
-            | .[:5]
-            | .[]
-            | "\(.key)|\(.value.weekly_spikes // 0)"
-          ' "$FILE")
-
-          INDEX=1
-
-          while IFS="|" read -r SITE SPIKES; do
-
-            [ -z "$SITE" ] && continue
-
-            REPORT+="$INDEX. 🌐 $SITE\n"
-            REPORT+="   🚨 Weekly Spike Events: $SPIKES\n\n"
-
-            INDEX=$((INDEX + 1))
-
-          done <<< "$TOP"
-
-          REPORT+="━━━━━━━━━━━━━━━━━━\n\n"
-          REPORT+="📡 Observability Notes\n"
-          REPORT+="• High spikes = unstable service\n"
-          REPORT+="• Large deviations = infra degradation\n"
-          REPORT+="• Rolling baselines improve anomaly detection\n\n"
-
-          LOCAL_TIME=$(TZ="$SUMMARY_TIMEZONE" \
-            date +"%d %b %Y | %I:%M %p %Z")
-
-          REPORT+="🕒 $LOCAL_TIME"
-
-          echo "msg<<EOF" >> $GITHUB_OUTPUT
-          echo -e "$REPORT" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-
-      # ====================================
-      # Send weekly report
-      # ====================================
-
-      - name: Send Telegram report
-
-        run: |
-
-          PAYLOAD=$(jq -n \
-            --arg chat_id "${{ secrets.CHAT_ID }}" \
-            --arg text "${{ steps.report.outputs.msg }}" \
-            --argjson thread_id ${{ secrets.ALERTS_TOPIC_ID }} \
-            '{
-              chat_id: $chat_id,
-              message_thread_id: $thread_id,
-              text: $text,
-              disable_web_page_preview: true
-            }')
-
-          curl -s -X POST \
-            "https://api.telegram.org/bot${{ secrets.SUMMARY_BOT_TOKEN }}/sendMessage" \
-            -H "Content-Type: application/json" \
-            -d "$PAYLOAD"
