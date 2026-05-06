@@ -6,5 +6,9 @@
   "testasssa": {
     "active": true,
     "last_incident": 1778069360
+  },
+  "my-web": {
+    "active": true,
+    "last_incident": 1778069391
   }
 }
