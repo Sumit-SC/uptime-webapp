@@ -12,6 +12,11 @@
 # FEATURES
 # ==========================================
 #
+# ✅ Daily Telegram summary
+# ✅ GitHub cron reliability workaround
+# ✅ Internal timezone-aware scheduling
+# ✅ Duplicate prevention
+# ✅ Health bars
 # ✅ Uptime monitoring summary
 # ✅ Sequential service numbering
 # ✅ Adaptive latency speed ladder
@@ -82,6 +87,21 @@
 # GitHub scheduled workflows may delay
 # by several minutes during high load.
 #
+#
+# WHY RUN EVERY 30 MINUTES?
+# ==========================================
+#
+# GitHub cron jobs are unreliable for:
+#   once-daily schedules
+#
+# So instead:
+#   workflow runs every 30 mins
+#
+# Then internally checks:
+#   current local hour
+#
+# This dramatically improves reliability.
+#
 # ------------------------------------------
 # TEST MODE (CURRENT)
 # ------------------------------------------
@@ -119,17 +139,15 @@ name: Advanced Infrastructure Health Digest
 
 on:
 
+ # ========================================
+  # Run every 30 minutes
   # ========================================
-  # TEST MODE
-  # Every 5 minutes
-  # ========================================
-
   schedule:
-    - cron: "35 2 * * *"
+    - cron: "*/30 * * * *"
 
   # ========================================
   # Manual trigger
-  # ========================================
+  # =================================
 
   workflow_dispatch:
 
@@ -159,6 +177,71 @@ jobs:
 
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      # ====================================
+      # Initialize cache
+      # ====================================
+      - name: Initialize cache
+        run: |
+          mkdir -p .cache
+
+      # ====================================
+      # Time gate
+      #
+      # Prevents GitHub cron misses
+      # ====================================
+      - name: Time gate
+        run: |
+
+          # ==================================
+          # Desired LOCAL hour
+          #
+          # Example:
+          # 08 = 8 AM
+          # 20 = 8 PM
+          # ==================================
+
+          TARGET_HOUR="09"
+
+          CURRENT_HOUR=$(TZ="$SUMMARY_TIMEZONE" date +%H)
+
+          echo "Current hour: $CURRENT_HOUR"
+          echo "Target hour: $TARGET_HOUR"
+
+          if [ "$CURRENT_HOUR" != "$TARGET_HOUR" ]; then
+            echo "Outside summary window."
+            exit 0
+          fi
+
+      # ====================================
+      # Prevent duplicate sends
+      # ====================================
+      - name: Prevent duplicate sends
+        run: |
+
+          LAST_RUN_FILE=".cache/summary-last-run"
+
+          CURRENT_SLOT=$(TZ="$SUMMARY_TIMEZONE" date +%Y-%m-%d-%H)
+
+          if [ -f "$LAST_RUN_FILE" ]; then
+
+            LAST=$(cat "$LAST_RUN_FILE")
+
+            if [ "$LAST" = "$CURRENT_SLOT" ]; then
+              echo "Summary already sent."
+              exit 0
+            fi
+          fi
+
+          echo "$CURRENT_SLOT" > "$LAST_RUN_FILE"
+
+      # ====================================
+      # Start runtime timer
+      # ====================================
+      - name: Start timer
+        run: |
+          echo "START=$(date +%s)" >> $GITHUB_ENV
+
 
       # ====================================
       # Build infrastructure summary
