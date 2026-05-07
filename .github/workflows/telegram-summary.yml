@@ -167,23 +167,22 @@ jobs:
       # ====================================
       # Runtime timer
       # ====================================
-
       - name: Start timer
         run: echo "START=$(date +%s)" >> $GITHUB_ENV
 
       # ====================================
       # Checkout repository
       # ====================================
-
       - name: Checkout repository
         uses: actions/checkout@v4
 
       # ====================================
-      # Initialize cache
+      # Initialize observability storage
       # ====================================
-      - name: Initialize cache
+      - name: Initialize observability
         run: |
           mkdir -p observability
+          touch observability/summary-last-run
 
       # ====================================
       # Time gate
@@ -191,12 +190,14 @@ jobs:
       # Prevents GitHub cron misses
       # ====================================
       - name: Time gate
+        id: gate
         run: |
 
           # ==================================
           # Desired LOCAL hour
           #
           # Example:
+          # 07 = 7 AM
           # 08 = 8 AM
           # 20 = 8 PM
           # ==================================
@@ -208,32 +209,44 @@ jobs:
           echo "Current hour: $CURRENT_HOUR"
           echo "Target hour: $TARGET_HOUR"
 
-          if [ "$CURRENT_HOUR" != "$TARGET_HOUR" ]; then
-            echo "Outside summary window."
-            exit 0
+          # if [ "$CURRENT_HOUR" != "$TARGET_HOUR" ]; then
+          #   echo "Outside summary window."
+          #   exit 0
+          # fi
+          if [ "$CURRENT_HOUR" = "$TARGET_HOUR" ]; then 
+          echo "run=true" >> $GITHUB_OUTPUT 
+          else 
+          echo "run=false" >> $GITHUB_OUTPUT 
           fi
 
       # ====================================
       # Prevent duplicate sends
       # ====================================
       - name: Prevent duplicate sends
+        id: dedupe 
+        if: steps.gate.outputs.run == 'true'
         run: |
 
-          LAST_RUN_FILE="observability/summary-last-run.json"
+          LAST_RUN_FILE="observability/summary-last-run"
 
           CURRENT_SLOT=$(TZ="$SUMMARY_TIMEZONE" date +%Y-%m-%d-%H)
+          echo "$CURRENT_SLOT" > observability/summary-last-run
 
-          if [ -f "$LAST_RUN_FILE" ]; then
+          touch "$LAST_RUN_FILE"
 
-            LAST=$(cat "$LAST_RUN_FILE")
+          LAST=$(cat "$LAST_RUN_FILE")
 
-            if [ "$LAST" = "$CURRENT_SLOT" ]; then
-              echo "Summary already sent."
-              exit 0
-            fi
+          echo "Current slot: $CURRENT_SLOT"
+          echo "Last slot: $LAST"
+
+          if [ "$LAST" = "$CURRENT_SLOT" ]; then
+            echo "send=false" >> $GITHUB_OUTPUT
+            echo "Summary already sent."
+            exit 0
           fi
 
           echo "$CURRENT_SLOT" > "$LAST_RUN_FILE"
+          echo "send=true" >> $GITHUB_OUTPUT
 
       # ====================================
       # Start runtime timer
@@ -249,6 +262,7 @@ jobs:
 
       - name: Build summary
         id: build
+        if: steps.dedupe.outputs.send == 'true'
 
         run: |
 
@@ -384,7 +398,7 @@ jobs:
 
             else
 
-              LAT_LABEL="—"
+              LAT_LABEL="⚠ Unknown"
 
             fi
 
@@ -603,7 +617,8 @@ jobs:
           # ==================================
           # Slowest service
           # ==================================
-
+          
+          SUMMARY+="\n﹌﹌﹌﹌﹌﹌﹌﹌﹌﹌﹌﹌\n\n"
           if [ -n "$SLOWEST_SITE" ]; then
 
             SUMMARY+="\n🐌 Slowest Service\n"
@@ -614,7 +629,8 @@ jobs:
           # ==================================
           # Instability insights
           # ==================================
-
+          
+          SUMMARY+="\n﹌﹌﹌﹌﹌﹌﹌﹌﹌﹌﹌﹌\n\n"
           if [ "$MOST_SPIKES" -gt 0 ]; then
 
             SUMMARY+="\n🚨 Most Unstable\n"
@@ -625,7 +641,7 @@ jobs:
           # ==================================
           # Operational insights
           # ==================================
-
+          SUMMARY+="\n━━━━━━━━━━━━━━━━━━\n\n"
           SUMMARY+="\n📡 System Assessment\n"
 
           if [ "$TREND" = "Critical" ]; then
@@ -657,6 +673,7 @@ jobs:
       # ====================================
 
       - name: Send Telegram summary
+        if: steps.dedupe.outputs.send == 'true'
 
         run: |
 
@@ -675,3 +692,21 @@ jobs:
             "https://api.telegram.org/bot${{ secrets.SUMMARY_BOT_TOKEN }}/sendMessage" \
             -H "Content-Type: application/json" \
             -d "$PAYLOAD"
+
+      # ====================================
+      # Persist observability state
+      # ====================================
+      - name: Persist observability state
+        if: steps.dedupe.outputs.send == 'true'
+
+        run: |
+
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+
+          git add observability/summary-last-run
+
+          git diff --cached --quiet || \
+          git commit -m "Update observability state"
+
+          git push
