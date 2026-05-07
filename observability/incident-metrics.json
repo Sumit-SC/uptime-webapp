@@ -18,7 +18,12 @@
     "mttr": 496
   },
   "my-web": {
-    "active": true,
-    "last_incident": 1778073546
+    "active": false,
+    "last_incident": 1778131960,
+    "incidents": 1,
+    "weekly": 1,
+    "flaps": 0,
+    "downtime": 58411,
+    "mttr": 58411
   }
 }
