@@ -25,5 +25,9 @@
     "flaps": 0,
     "downtime": 58411,
     "mttr": 58411
+  },
+  "portfolio-page": {
+    "active": true,
+    "last_incident": 1778155343
   }
 }
