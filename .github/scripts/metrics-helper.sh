@@ -1,4 +1,3 @@
-```bash id="z1b"
 #!/usr/bin/env bash
 
 # ==========================================
@@ -87,4 +86,3 @@ get_incidents() {
     '.[$slug].incidents // 0' \
     "$DB"
 }
-```
