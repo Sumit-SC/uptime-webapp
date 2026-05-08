@@ -162,7 +162,9 @@ jobs:
     env:
 
       # GitHub CLI auth
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_TOKEN: ${{ secrets.GH_PAT || github.token }}
+
 
       # Telegram
       TG_TOKEN: ${{ secrets.SUMMARY_BOT_TOKEN }}
