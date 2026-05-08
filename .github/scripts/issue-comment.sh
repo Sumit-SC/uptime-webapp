@@ -19,38 +19,49 @@ export GH_TOKEN="$GH_TOKEN"
 # GitHub issue indexing can lag
 # ==========================================
 
-echo "Waiting for GitHub issue sync..."
-
-sleep 10
-
 # ==========================================
-# Verify GitHub authentication
+# Wait for GitHub issue propagation
 # ==========================================
 
 echo "=================================="
-echo "🔐 GitHub Authentication"
+echo "⏳ Waiting for GitHub issue sync"
 echo "=================================="
 
-gh auth status || true
+MAX_SYNC_RETRIES=12
 
-# ==========================================
-# Verify issue exists
-# ==========================================
+SYNC_RETRY=1
 
-echo "=================================="
-echo "🔍 Validating issue existence"
-echo "=================================="
+ISSUE_READY=false
 
-if ! gh issue view "$ISSUE_NUMBER" >/dev/null 2>&1; then
+while [ $SYNC_RETRY -le $MAX_SYNC_RETRIES ]; do
 
-  echo "❌ GitHub issue not accessible"
-  echo "Issue: #$ISSUE_NUMBER"
+  echo "Sync attempt $SYNC_RETRY"
+
+  if gh issue view "$ISSUE_NUMBER" >/dev/null 2>&1; then
+
+    ISSUE_READY=true
+
+    echo "✅ Issue fully propagated"
+
+    break
+
+  fi
+
+  echo "Issue not ready yet..."
+
+  sleep 5
+
+  SYNC_RETRY=$((SYNC_RETRY + 1))
+
+done
+
+if [ "$ISSUE_READY" != true ]; then
+
+  echo "❌ GitHub issue propagation timeout"
 
   exit 1
 
 fi
-
-echo "✅ Issue exists"
 
 # ==========================================
 # Comment retry logic
@@ -70,10 +81,6 @@ while [ $RETRY -le $MAX_RETRIES ]; do
 
   echo "Attempt $RETRY of $MAX_RETRIES"
 
-  # ========================================
-  # Try gh CLI first
-  # ========================================
-
   if gh issue comment "$ISSUE_NUMBER" \
       --body "$COMMENT"; then
 
@@ -92,6 +99,17 @@ while [ $RETRY -le $MAX_RETRIES ]; do
   RETRY=$((RETRY + 1))
 
 done
+
+# ==========================================
+# Verify GitHub authentication
+# ==========================================
+
+echo "=================================="
+echo "🔐 GitHub Authentication"
+echo "=================================="
+
+gh auth status || true
+
 
 # ==========================================
 # Hard failure handling
