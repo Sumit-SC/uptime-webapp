@@ -4,52 +4,80 @@ set -e
 
 COMMENT="$1"
 
-echo "==================================" 
-echo "💬 GitHub Issue Enrichment" 
+echo "=================================="
+echo "💬 GitHub Issue Enrichment Engine"
 echo "=================================="
 
-# ========================================== 
-# Export auth token 
+# ==========================================
+# Export authentication token
 # ==========================================
 
 export GH_TOKEN="$GH_TOKEN"
 
-echo "=================================="
-echo "💬 Posting GitHub issue comment"
-echo "=================================="
+# ==========================================
+# Initial sync wait
+# GitHub issue indexing can lag
+# ==========================================
 
-# ========================================== 
-# Wait for issue indexing 
-# ========================================== 
+echo "Waiting for GitHub issue sync..."
 
-echo "Waiting for GitHub issue sync..." 
 sleep 10
 
-# ========================================== 
-# Debug auth/ Verify Authentication 
-# ========================================== 
-echo "Authenticated GitHub user:" 
+# ==========================================
+# Verify GitHub authentication
+# ==========================================
+
+echo "=================================="
+echo "🔐 GitHub Authentication"
+echo "=================================="
+
 gh auth status || true
 
 # ==========================================
-# Add/Post issue comment with retry logic
+# Verify issue exists
 # ==========================================
-# echo "Posting issue comment..."
 
-# gh issue comment "$ISSUE_NUMBER" \
-#   --body "$COMMENT"
-# echo "✅ Issue comment posted"
+echo "=================================="
+echo "🔍 Validating issue existence"
+echo "=================================="
+
+if ! gh issue view "$ISSUE_NUMBER" >/dev/null 2>&1; then
+
+  echo "❌ GitHub issue not accessible"
+  echo "Issue: #$ISSUE_NUMBER"
+
+  exit 1
+
+fi
+
+echo "✅ Issue exists"
+
+# ==========================================
+# Comment retry logic
+# ==========================================
+
+echo "=================================="
+echo "💬 Posting GitHub comment"
+echo "=================================="
 
 MAX_RETRIES=5
 
 RETRY=1
 
+COMMENT_SUCCESS=false
+
 while [ $RETRY -le $MAX_RETRIES ]; do
 
-  echo "Attempt $RETRY to post issue comment..."
+  echo "Attempt $RETRY of $MAX_RETRIES"
+
+  # ========================================
+  # Try gh CLI first
+  # ========================================
 
   if gh issue comment "$ISSUE_NUMBER" \
       --body "$COMMENT"; then
+
+    COMMENT_SUCCESS=true
 
     echo "✅ GitHub comment posted"
 
@@ -57,7 +85,7 @@ while [ $RETRY -le $MAX_RETRIES ]; do
 
   fi
 
-  echo "⚠️ Comment failed. Retrying..."
+  echo "⚠️ Comment attempt failed"
 
   sleep 5
 
@@ -66,44 +94,119 @@ while [ $RETRY -le $MAX_RETRIES ]; do
 done
 
 # ==========================================
-# Add Auto labels
+# Hard failure handling
+# ==========================================
+
+if [ "$COMMENT_SUCCESS" != true ]; then
+
+  echo "=================================="
+  echo "❌ GitHub comment failed"
+  echo "=================================="
+
+  exit 1
+
+fi
+
+# ==========================================
+# Build dynamic labels
 # ==========================================
 
 LABELS=()
 
+# ==========================================
+# Base observability labels
+# ==========================================
+
+LABELS+=("observability")
+LABELS+=("automated-rca")
+
+# ==========================================
+# Incident state labels
+# ==========================================
+
+if [[ "$ISSUE_ACTION" =~ closed ]]; then
+
+  LABELS+=("resolved")
+
+else
+
+  LABELS+=("active-incident")
+
+fi
+
+# ==========================================
 # Severity labels
+# ==========================================
 
 if [[ "$SEVERITY" =~ Critical|🛑 ]]; then
+
   LABELS+=("critical")
+
 elif [[ "$SEVERITY" =~ Major|🚨 ]]; then
+
   LABELS+=("major")
+
 else
+
   LABELS+=("minor")
+
 fi
 
-# RCA labels
+# ==========================================
+# RCA classification labels
+# ==========================================
 
-LOWER=$(echo "$RCA" | tr '[:upper:]' '[:lower:]')
+LOWER_RCA=$(echo "$RCA" \
+  | tr '[:upper:]' '[:lower:]')
 
-if [[ "$LOWER" =~ dns ]]; then
+if [[ "$LOWER_RCA" =~ dns ]]; then
+
   LABELS+=("dns")
+
 fi
 
-if [[ "$LOWER" =~ overload|backend ]]; then
+if [[ "$LOWER_RCA" =~ overload|backend|server ]]; then
+
   LABELS+=("backend")
+
 fi
 
-if [[ "$LOWER" =~ deployment|testing ]]; then
+if [[ "$LOWER_RCA" =~ deployment|testing|staging ]]; then
+
   LABELS+=("testing")
+
 fi
+
+if [[ "$LOWER_RCA" =~ cloudflare|cdn|provider ]]; then
+
+  LABELS+=("external-service")
+
+fi
+
+if [[ "$LOWER_RCA" =~ network|latency|timeout ]]; then
+
+  LABELS+=("network")
+
+fi
+
+# ==========================================
+# Remove duplicates
+# ==========================================
+
+UNIQUE_LABELS=($(printf "%s\n" "${LABELS[@]}" \
+  | sort -u))
 
 # ==========================================
 # Apply labels
 # ==========================================
 
-echo "Applying observability labels..."
+echo "=================================="
+echo "🏷 Applying labels"
+echo "=================================="
 
-for LABEL in "${LABELS[@]}"; do
+for LABEL in "${UNIQUE_LABELS[@]}"; do
+
+  echo "Adding label: $LABEL"
 
   gh issue edit "$ISSUE_NUMBER" \
     --add-label "$LABEL" || true
@@ -114,4 +217,4 @@ echo "✅ Labels applied"
 
 echo "=================================="
 echo "✅ GitHub enrichment completed"
-echo "=================================="
+echo "=================================="	
