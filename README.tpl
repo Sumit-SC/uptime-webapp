@@ -1,4 +1,3 @@
-```md id="jlwm34"
 # 📡 Infrastructure Observability Stack
 
 ## 🚀 Monitoring Pipelines
@@ -27,4 +26,4 @@
 {{ uptime }}
 
 {{ history }}
-```
+
