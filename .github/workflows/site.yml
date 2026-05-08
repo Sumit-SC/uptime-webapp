@@ -45,4 +45,4 @@ jobs:
           publish_dir: "site/status-page/__sapper__/export/"
           force_orphan: "false"
           user_name: "observability-bot & Upptime Bot"
-          user_email: "actions@github.com, mitsu@duck.com & upptime@koj.co"
+          user_email: "mitsu@duck.com"
