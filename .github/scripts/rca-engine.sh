@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # ==========================================
-# RCA Engine
+# RCA Intelligence Engine
 # ==========================================
 
 generate_rca() {
@@ -12,101 +12,127 @@ generate_rca() {
   RCA=""
   CHECKS=""
   ETA=""
-  SEVERITY="⚠ Minor"
+  SEVERITY="⚠️ Minor"
 
   LOWER=$(echo "$SITE" | tr '[:upper:]' '[:lower:]')
 
   # ========================================
-  # Test / staging sites
+  # TEST / STAGING SITES
   # ========================================
 
-  if [[ "$LOWER" =~ test|staging|sandbox|debug|dev ]]; then
+  if [[ "$LOWER" =~ test|debug|sandbox|staging|dev ]]; then
 
     RCA="Possible deployment/testing instability."
 
-    CHECKS="• CI/CD logs
-• API endpoints
-• Recent deployments
-• Temporary feature toggles"
+    CHECKS="• Verify CI/CD pipelines
+• Check API endpoints
+• Review deployment logs
+• Inspect recent commits
+• Validate feature toggles"
 
     ETA="Likely short-lived"
+
+    SEVERITY="🧪 Test Alert"
 
     return
   fi
 
   # ========================================
-  # Public sites
+  # PUBLIC WEBSITES
   # ========================================
 
-  if [[ "$LOWER" =~ google|wikipedia ]]; then
+  if [[ "$LOWER" =~ google|wikipedia|github ]]; then
 
     RCA="Likely CDN or provider-side instability."
 
     CHECKS="• Retry from another network
-• Verify local DNS
-• Check public outage trackers"
+• Verify local DNS resolution
+• Check public outage trackers
+• Validate ISP connectivity"
 
     ETA="Usually transient"
+
+    SEVERITY="🌐 External Service"
 
     return
   fi
 
   # ========================================
-  # Latency-based RCA
+  # UNKNOWN LATENCY
   # ========================================
 
-  if [[ "$LATENCY" =~ ^[0-9]+$ ]]; then
-
-    if [ "$LATENCY" -gt 2500 ]; then
-
-      RCA="Progressive backend degradation or infrastructure overload."
-
-      CHECKS="• CPU/RAM usage
-• Reverse proxy health
-• Database latency
-• Cloudflare analytics
-• Hosting dashboard"
-
-      ETA="10–30 mins"
-
-      SEVERITY="🛑 Critical"
-
-    elif [ "$LATENCY" -gt 1000 ]; then
-
-      RCA="High latency and degraded upstream performance."
-
-      CHECKS="• API response times
-• Hosting metrics
-• Recent deployments"
-
-      ETA="5–15 mins"
-
-      SEVERITY="🚨 Major"
-
-    else
-
-      RCA="Temporary connectivity instability."
-
-      CHECKS="• DNS health
-• SSL validity
-• Network routing"
-
-      ETA="Monitoring recovery"
-
-    fi
-
-  else
+  if [ "$LATENCY" = "unknown" ]; then
 
     RCA="DNS resolution or upstream connectivity issue."
 
-    CHECKS="• DNS records
-• SSL certificates
-• Hosting provider status
-• Cloudflare dashboard"
+    CHECKS="• Verify DNS records
+• Check SSL certificates
+• Inspect hosting provider status
+• Validate Cloudflare configuration
+• Test server reachability"
 
     ETA="Dependent on provider recovery"
 
     SEVERITY="🛑 Critical"
+
+    return
+  fi
+
+  # ========================================
+  # LATENCY BASED RCA
+  # ========================================
+
+  if [ "$LATENCY" -gt 3000 ]; then
+
+    RCA="Progressive backend degradation or infrastructure overload."
+
+    CHECKS="• Check CPU/RAM usage
+• Review reverse proxy health
+• Inspect database latency
+• Check Cloudflare analytics
+• Verify hosting metrics
+• Inspect recent deployments"
+
+    ETA="10–30 mins"
+
+    SEVERITY="🛑 Critical"
+
+  elif [ "$LATENCY" -gt 1500 ]; then
+
+    RCA="High upstream latency and degraded server responsiveness."
+
+    CHECKS="• Verify API response times
+• Review application logs
+• Inspect network bottlenecks
+• Monitor resource utilization"
+
+    ETA="5–15 mins"
+
+    SEVERITY="🚨 Major"
+
+  elif [ "$LATENCY" -gt 700 ]; then
+
+    RCA="Elevated response latency detected before outage."
+
+    CHECKS="• Verify hosting stability
+• Review DNS health
+• Monitor upstream APIs"
+
+    ETA="Monitoring recovery"
+
+    SEVERITY="⚠️ Moderate"
+
+  else
+
+    RCA="Temporary connectivity instability."
+
+    CHECKS="• Verify DNS health
+• Check SSL validity
+• Inspect routing/network path"
+
+    ETA="Likely transient"
+
+    SEVERITY="⚠️ Minor"
 
   fi
 }
