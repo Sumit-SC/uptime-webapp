@@ -215,36 +215,35 @@ UTC_TIME=$(date -u +"%H:%M UTC")
 # Telegram recovery message
 # ==========================================
 
-MESSAGE="🟢 Incident Resolved
+MESSAGE="🟢 Incident Resolved | #️⃣ Incident: #$ISSUE_NUMBER
 
-📡 Status: HEALTHY
-
+📡 Status: DOWN | 🧪 Environment: $ENVIRONMENT
 🌐 Site: $SITE | 🔗 : $SITE_URL
 
 📈 Uptime: $UPTIME
-📊 Recovery State: $RECOVERY_STATE
 📊 Health: $HEALTH
-
-⚡ Current Latency: $LATENCY ms
+⚡ Response Time: $LATENCY ms
 🚦 Speed Class: $SPEED
-
 📉 Incident Count: $INCIDENTS
-📘 Avg MTTR: $AVG_MTTR mins
-⏱ Downtime: $DURATION
+📘 Avg MTTR: $MTTR mins
 
-🛠 Recovery Notes:
-$RECOVERY_NOTE
+----------------------------------
+🛠 Probable Cause:
+$RCA
 
-$FLAP_WARNING
+🔍 Suggested Checks:
+$CHECKS
 
-🔗 Status Dashboard:
-$STATUS_URL
+⏳ ETA: $ETA
 
-🛠 GitHub Incident:
-$GITHUB_ISSUE_URL
+⚠️ : $FLAP_WARNING
+-----------------------------------
 
-📄 Incident Archive:
-$INCIDENT_URL
+🔗 : $STATUS_URL
+
+🛠 : $GITHUB_ISSUE_URL
+
+📄 : $INCIDENT_URL
 
 🕒 $LOCAL_TIME | 🌍 $UTC_TIME"
 
