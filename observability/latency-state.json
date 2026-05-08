@@ -2,7 +2,7 @@
   "portfolio-page": {
     "spikes": 0,
     "last_alert": 1778231037,
-    "active": true,
+    "active": false,
     "avg": 311,
     "deviation": 0,
     "weekly_spikes": 5
@@ -10,15 +10,15 @@
   "personal-lab": {
     "spikes": 0,
     "last_alert": 1778231037,
-    "active": true,
+    "active": false,
     "avg": 1462,
     "deviation": 207,
     "weekly_spikes": 7
   },
   "portfolio-website": {
-    "spikes": 1,
+    "spikes": 0,
     "last_alert": 1778231037,
-    "active": true,
+    "active": false,
     "avg": 795,
     "deviation": 0,
     "weekly_spikes": 9
@@ -34,7 +34,7 @@
   "wikipedia": {
     "spikes": 0,
     "last_alert": 1778231037,
-    "active": true,
+    "active": false,
     "avg": 218,
     "deviation": 5,
     "weekly_spikes": 5
@@ -42,18 +42,18 @@
   "streamio": {
     "spikes": 0,
     "last_alert": 1778231037,
-    "active": true,
+    "active": false,
     "avg": 1135,
     "deviation": 0,
     "weekly_spikes": 5
   },
   "test-shopping": {
-    "spikes": 2,
-    "last_alert": 1778235733,
+    "spikes": 3,
+    "last_alert": 1778246820,
     "active": true,
     "avg": 1,
     "deviation": 999,
-    "weekly_spikes": 1
+    "weekly_spikes": 2
   },
   "debug-app": {
     "spikes": 1,
@@ -64,7 +64,7 @@
     "weekly_spikes": 1
   },
   "my-web": {
-    "spikes": 1,
+    "spikes": 2,
     "last_alert": 1778241178,
     "active": true,
     "avg": 1,
