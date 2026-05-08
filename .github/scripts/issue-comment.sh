@@ -42,9 +42,9 @@ LABELS=()
 
 # Severity labels
 
-if [[ "$SEVERITY" =~ Critical ]]; then
+if [[ "$SEVERITY" =~ Critical|🛑 ]]; then
   LABELS+=("critical")
-elif [[ "$SEVERITY" =~ Major ]]; then
+elif [[ "$SEVERITY" =~ Major|🚨 ]]; then
   LABELS+=("major")
 else
   LABELS+=("minor")
