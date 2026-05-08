@@ -1,23 +1,44 @@
-# 📡 Infrastructure Observability Stack
-
-## 🚀 Monitoring Pipelines
-
-| Workflow              | Status                                                                               |
-| --------------------- | ------------------------------------------------------------------------------------ |
-| Infrastructure Digest | [![Advanced Infrastructure Health Digest](https://github.com/Sumit-SC/ping/actions/workflows/telegram-summary.yml/badge.svg)](https://github.com/Sumit-SC/ping/actions/workflows/telegram-summary.yml)        |
-| Latency Alerts        | [![Advanced Latency Observability](https://github.com/Sumit-SC/ping/actions/workflows/latency-alert.yml/badge.svg)](https://github.com/Sumit-SC/ping/actions/workflows/latency-alert.yml)       |
-| Incident Alerts       | [![Advanced Incident Observability](https://github.com/Sumit-SC/ping/actions/workflows/incident-alert.yml/badge.svg)](https://github.com/Sumit-SC/ping/actions/workflows/incident-alert.yml) |
 
 # [📈 Live Status](https://demo.upptime.js.org): <!--live status--> **🟩 All systems operational**
 
-
 This repository contains the open-source uptime monitor and status page for [Sumit S. Chaure](https://github.com/Sumit-SC), powered by [Upptime](https://github.com/upptime/upptime).
 
-[![Uptime CI](https://github.com/Sumit-SC/uptime-webapp/workflows/Uptime%20CI/badge.svg)](https://github.com/Sumit-SC/uptime-webapp/actions?query=workflow%3A%22Uptime+CI%22)
-[![Response Time CI](https://github.com/Sumit-SC/uptime-webapp/workflows/Response%20Time%20CI/badge.svg)](https://github.com/Sumit-SC/uptime-webapp/actions?query=workflow%3A%22Response+Time+CI%22)
-[![Graphs CI](https://github.com/Sumit-SC/uptime-webapp/workflows/Graphs%20CI/badge.svg)](https://github.com/Sumit-SC/uptime-webapp/actions?query=workflow%3A%22Graphs+CI%22)
-[![Static Site CI](https://github.com/Sumit-SC/uptime-webapp/workflows/Static%20Site%20CI/badge.svg)](https://github.com/Sumit-SC/uptime-webapp/actions?query=workflow%3A%22Static+Site+CI%22)
-[![Summary CI](https://github.com/Sumit-SC/uptime-webapp/workflows/Summary%20CI/badge.svg)](https://github.com/Sumit-SC/uptime-webapp/actions?query=workflow%3A%22Summary+CI%22)
+# 📡 Runners Stack & CI-CD testing Metrics
+
+<table>
+<tr>
+
+<td valign="top" width="50%">
+
+## 🚀 Infrastructure Observability
+
+| Workflow | Status |
+|---|---|
+| Infrastructure Digest | [![Advanced Infrastructure Health Digest](https://github.com/Sumit-SC/ping/actions/workflows/telegram-summary.yml/badge.svg)](https://github.com/Sumit-SC/ping/actions/workflows/telegram-summary.yml) |
+| Latency Alerts | [![Advanced Latency Observability](https://github.com/Sumit-SC/ping/actions/workflows/latency-alert.yml/badge.svg)](https://github.com/Sumit-SC/ping/actions/workflows/latency-alert.yml) |
+| Incident Alerts | [![Advanced Incident Observability](https://github.com/Sumit-SC/ping/actions/workflows/incident-alert.yml/badge.svg)](https://github.com/Sumit-SC/ping/actions/workflows/incident-alert.yml) |
+
+</td>
+
+<td valign="top" width="50%">
+
+## ⚙️ Upptime Core Workers
+
+| Workflow | Status |
+|---|---|
+| Uptime CI | [![Uptime CI](https://github.com/Sumit-SC/uptime-webapp/workflows/Uptime%20CI/badge.svg)](https://github.com/Sumit-SC/uptime-webapp/actions?query=workflow%3A%22Uptime+CI%22) |
+| Response Time CI | [![Response Time CI](https://github.com/Sumit-SC/uptime-webapp/workflows/Response%20Time%20CI/badge.svg)](https://github.com/Sumit-SC/uptime-webapp/actions?query=workflow%3A%22Response+Time+CI%22) |
+| Graphs CI | [![Graphs CI](https://github.com/Sumit-SC/uptime-webapp/workflows/Graphs%20CI/badge.svg)](https://github.com/Sumit-SC/uptime-webapp/actions?query=workflow%3A%22Graphs+CI%22) |
+| Static Site CI | [![Static Site CI](https://github.com/Sumit-SC/uptime-webapp/workflows/Static%20Site%20CI/badge.svg)](https://github.com/Sumit-SC/uptime-webapp/actions?query=workflow%3A%22Static+Site+CI%22) |
+| Summary CI | [![Summary CI](https://github.com/Sumit-SC/uptime-webapp/workflows/Summary%20CI/badge.svg)](https://github.com/Sumit-SC/uptime-webapp/actions?query=workflow%3A%22Summary+CI%22) |
+
+</td>
+
+</tr>
+</table>
+
+---
+
 
 With [Upptime](https://upptime.js.org), you can get your own unlimited and free uptime monitor and status page, powered entirely by a GitHub repository. We use [Issues](https://docs.github.com/en/issues) as [Incident Reports](https://github.com/Sumit-SC/uptime-webapp/issues), [Actions](https://docs.github.com/en/actions) as [Uptime Monitors](https://github.com/Sumit-SC/uptime-webapp/actions), and [Pages](https://pages.github.com/) for the [Status Page](https://demo.upptime.js.org).
 
