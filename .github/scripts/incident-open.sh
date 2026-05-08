@@ -1,15 +1,25 @@
 #!/usr/bin/env bash
 
+set -e
+
 source .github/scripts/metrics-helper.sh
 source .github/scripts/rca-engine.sh
-source .github/scripts/tg-send.sh
-source .github/scripts/issue-comment.sh
 
-TITLE="${GITHUB_EVENT_ISSUE_TITLE:-${{ github.event.issue.title }}}"
+# ==========================================
+# Parse issue title
+# ==========================================
+
+TITLE="$ISSUE_TITLE"
 
 SITE=$(echo "$TITLE" \
   | sed -E 's/ is down.*//' \
   | xargs)
+
+echo "Detected site: $SITE"
+
+# ==========================================
+# Fetch metrics
+# ==========================================
 
 SLUG=$(get_slug "$SITE")
 
@@ -19,7 +29,15 @@ UPTIME=$(get_uptime "$SITE")
 
 INCIDENTS=$(get_incidents "$SLUG")
 
+# ==========================================
+# Generate RCA
+# ==========================================
+
 generate_rca "$SITE" "$LATENCY"
+
+# ==========================================
+# Build Telegram message
+# ==========================================
 
 MESSAGE="$SEVERITY INCIDENT DETECTED
 
@@ -38,20 +56,15 @@ $CHECKS
 ⏳ ETA:
 $ETA"
 
-send_tg "$MESSAGE"
+echo "$MESSAGE"
 
-COMMENT="🤖 Automated Incident Analysis
+==========================================
+TEMP DEBUG MODE
+==========================================
 
-Severity:
-$SEVERITY
+Uncomment later:
+bash .github/scripts/tg-send.sh "$MESSAGE"
 
-Probable Cause:
-$RCA
+Uncomment later:
+bash .github/scripts/issue-comment.sh "$MESSAGE"
 
-Suggested Checks:
-$CHECKS
-
-ETA:
-$ETA"
-
-comment_issue "$COMMENT"
