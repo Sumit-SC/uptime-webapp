@@ -103,11 +103,14 @@
 # ==========================================
 # Actual Working Code ⬇️
 # ==========================================
+
 name: 🚨 Incident Observability
 
-concurrency:
-  group: incident-observability
-  cancel-in-progress: false
+# ==========================================
+# Trigger:
+# - Upptime issue opened
+# - Upptime issue closed
+# ==========================================
 
 on:
   issues:
@@ -117,48 +120,105 @@ on:
 
   workflow_dispatch:
 
+# ==========================================
+# Prevent overlapping executions
+# ==========================================
+
+concurrency:
+  group: incident-observability
+  cancel-in-progress: false
+
 jobs:
 
   incident:
 
-    if: github.event_name == 'issues'
-
     runs-on: ubuntu-latest
 
+    # ======================================
+    # Ignore non-Upptime issues
+    # ======================================
+
+    if: |
+      contains(github.event.issue.title, 'down') ||
+      contains(github.event.issue.title, 'up')
+
+    env:
+
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      TG_TOKEN: ${{ secrets.SUMMARY_BOT_TOKEN }}
+
+      CHAT_ID: ${{ secrets.CHAT_ID }}
+
+      THREAD_ID: ${{ secrets.ALERTS_TOPIC_ID }}
+
+      INCIDENT_BASE_URL: ${{ secrets.INCIDENT_BASE_URL }}
+
+      STATUS_BASE_URL: ${{ secrets.STATUS_BASE_URL }}
+
+      SUMMARY_TIMEZONE: ${{ secrets.SUMMARY_TIMEZONE }}
+
+      ISSUE_TITLE: ${{ github.event.issue.title }}
+
+      ISSUE_NUMBER: ${{ github.event.issue.number }}
+
+      ISSUE_ACTION: ${{ github.event.action }}
+
     steps:
+
+      # ====================================
+      # Checkout repository
+      # ====================================
 
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # ====================================
+      # Initialize observability storage
+      # ====================================
+
       - name: Initialize observability DB
         run: |
+
           mkdir -p observability
 
-          [ ! -f observability/incident-metrics.json ] \
-            && echo "{}" > observability/incident-metrics.json
-
-      - name: Run incident intelligence
-        run: |
-
-          chmod +x .github/scripts/*.sh
-
-          if [ "${{ github.event.action }}" = "opened" ]; then
-            bash .github/scripts/incident-open.sh
-          else
-            bash .github/scripts/incident-close.sh
+          if [ ! -f observability/incident-metrics.json ]; then
+            echo "{}" > observability/incident-metrics.json
           fi
 
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # ====================================
+      # Make scripts executable
+      # ====================================
 
-          TG_TOKEN: ${{ secrets.SUMMARY_BOT_TOKEN }}
+      - name: Make scripts executable
+        run: |
+          chmod +x .github/scripts/*.sh
 
-          CHAT_ID: ${{ secrets.CHAT_ID }}
+      # ====================================
+      # Debug workflow info
+      # ====================================
 
-          THREAD_ID: ${{ secrets.ALERTS_TOPIC_ID }}
+      - name: Debug incident context
+        run: |
 
-          INCIDENT_BASE_URL: ${{ secrets.INCIDENT_BASE_URL }}
+          echo "Issue title: $ISSUE_TITLE"
+          echo "Issue action: $ISSUE_ACTION"
+          echo "Issue number: $ISSUE_NUMBER"
 
-          STATUS_BASE_URL: ${{ secrets.STATUS_BASE_URL }}
+      # ====================================
+      # Incident OPEN logic
+      # ====================================
 
-          SUMMARY_TIMEZONE: ${{ secrets.SUMMARY_TIMEZONE }}
+      - name: Run outage intelligence
+        if: env.ISSUE_ACTION == 'opened'
+        run: |
+          bash .github/scripts/incident-open.sh
+
+      # ====================================
+      # Incident RECOVERY logic
+      # ====================================
+
+      - name: Run recovery intelligence
+        if: env.ISSUE_ACTION == 'closed'
+        run: |
+          bash .github/scripts/incident-close.sh
