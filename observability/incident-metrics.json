@@ -54,6 +54,7 @@
   },
   "debug-app": {
     "incidents": 1,
-    "last_down": 1778261996
+    "last_down": 1778261996,
+    "mttr": 1
   }
 }
