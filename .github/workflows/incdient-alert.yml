@@ -30,15 +30,19 @@
 # - recovery summaries
 # - degradation analysis
 # - persistent metrics
+# - GitHub enrichment
+# - RCA automation
+# - MTTR persistence
 #
 # ==========================================
 # REQUIRED GITHUB SECRETS
 # ==========================================
 #
-# INCIDENT_BASE_URL
-#   Base URL for incident pages.
-#   Example:
-#   https://status.example.com/incident
+# GH_PAT
+# Personal Access Token with:
+# - repo
+# - workflow
+# - issues
 #
 # STATUS_BASE_URL
 #   Base URL for history pages.
@@ -82,8 +86,6 @@
 # - flap counters
 # - active state
 #
-# This file persists across workflow runs.
-#
 # ==========================================
 # FEATURES
 # ==========================================
@@ -93,15 +95,17 @@
 # ✅ Downtime duration tracking
 # ✅ MTTR tracking
 # ✅ Incident frequency tracking
-# ✅ Weekly reporting
 # ✅ Severity classification
 # ✅ Speed ladder integration
 # ✅ Jitter / degradation indicators
 # ✅ Telegram integration
 # ✅ Persistent metrics storage
+# ✅ GitHub issue enrichment
+# ✅ Automated RCA comments
+# ✅ Recovery intelligence
 #
 # ==========================================
-# Actual Working Code ⬇️
+# # Actual Working Code ⬇️ / WORKFLOW
 # ==========================================
 
 name: 🚨 Incident Observability
@@ -112,13 +116,27 @@ name: 🚨 Incident Observability
 
 on:
 
+  # ========================================
   # Upptime issue lifecycle
+  # ========================================
+
   issues:
     types:
       - opened
       - closed
 
+  # ========================================
+  # Weekly analytics report
+  # Monday 03:00 UTC
+  # ========================================
+
+  schedule:
+    - cron: "0 3 * * 1"
+
+  # ========================================
   # Manual testing
+  # ========================================
+
   workflow_dispatch:
 
 # ==========================================
@@ -143,54 +161,84 @@ concurrency:
 
 jobs:
 
+  # ========================================
+  # INCIDENT LIFECYCLE
+  # ========================================
+
   incident:
 
     runs-on: ubuntu-latest
+
+    timeout-minutes: 15
 
     # ======================================
     # Ignore unrelated issues
     # ======================================
 
     if: |
-      contains(github.event.issue.title, 'down') ||
-      contains(github.event.issue.title, 'up')
+      github.event_name == 'issues' &&
+      (
+        contains(github.event.issue.title, 'down') ||
+        contains(github.event.issue.title, 'up')
+      )
 
     # ======================================
     # Shared environment variables
     # ======================================
 
     env:
-      # ======================================
+
+      # ====================================
       # GitHub PAT
-      # ======================================
-      # GitHub CLI auth
-      # GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # ====================================
+
       GH_TOKEN: ${{ secrets.GH_PAT }}
 
-
+      # ====================================
       # Telegram
+      # ====================================
+
       TG_TOKEN: ${{ secrets.SUMMARY_BOT_TOKEN }}
+
       CHAT_ID: ${{ secrets.CHAT_ID }}
+
       THREAD_ID: ${{ secrets.ALERTS_TOPIC_ID }}
 
+      # ====================================
       # URLs
+      # ====================================
+
       INCIDENT_BASE_URL: ${{ secrets.INCIDENT_BASE_URL }}
+
       STATUS_BASE_URL: ${{ secrets.STATUS_BASE_URL }}
 
+      # ====================================
       # Timezone
+      # ====================================
+
       SUMMARY_TIMEZONE: ${{ secrets.SUMMARY_TIMEZONE }}
 
-      # Issue metadata
+      # ====================================
+      # GitHub issue metadata
+      # ====================================
+
       ISSUE_TITLE: ${{ github.event.issue.title }}
+
       ISSUE_NUMBER: ${{ github.event.issue.number }}
+
       ISSUE_ACTION: ${{ github.event.action }}
-      
+
       ISSUE_CREATED_AT: ${{ github.event.issue.created_at }}
+
       ISSUE_CLOSED_AT: ${{ github.event.issue.closed_at }}
 
-      GITHUB_REPOSITORY: ${{ github.repository }}
-      GITHUB_SERVER_URL: ${{ github.server_url }}
+      # ====================================
+      # GitHub repo metadata
+      # ====================================
 
+      GITHUB_REPOSITORY: ${{ github.repository }}
+
+      GITHUB_SERVER_URL: ${{ github.server_url }}
 
     steps:
 
@@ -206,6 +254,7 @@ jobs:
       # ====================================
 
       - name: Install yq
+        shell: bash
         run: |
 
           sudo wget -qO /usr/bin/yq \
@@ -213,19 +262,45 @@ jobs:
 
           sudo chmod +x /usr/bin/yq
 
+          echo "Installed yq version:"
           yq --version
+
+      # ====================================
+      # Validate GitHub authentication
+      # ====================================
+
+      - name: Validate GitHub authentication
+        shell: bash
+        run: |
+
+          echo "================================="
+          echo "GitHub Authentication"
+          echo "================================="
+
+          gh auth status || true
 
       # ====================================
       # Initialize observability DB
       # ====================================
 
       - name: Initialize observability DB
+        shell: bash
         run: |
 
           mkdir -p observability
 
-          if [ ! -f observability/incident-metrics.json ]; then
-            echo "{}" > observability/incident-metrics.json
+          DB="observability/incident-metrics.json"
+
+          if [ ! -f "$DB" ]; then
+
+            echo "{}" > "$DB"
+
+            echo "Created observability DB"
+
+          else
+
+            echo "Observability DB already exists"
+
           fi
 
       # ====================================
@@ -233,6 +308,7 @@ jobs:
       # ====================================
 
       - name: Make scripts executable
+        shell: bash
         run: |
 
           chmod +x .github/scripts/*.sh
@@ -242,6 +318,7 @@ jobs:
       # ====================================
 
       - name: Debug incident context
+        shell: bash
         run: |
 
           echo "================================="
@@ -258,6 +335,7 @@ jobs:
 
       - name: Run outage intelligence
         if: env.ISSUE_ACTION == 'opened'
+        shell: bash
         run: |
 
           echo "================================="
@@ -272,6 +350,7 @@ jobs:
 
       - name: Run recovery intelligence
         if: env.ISSUE_ACTION == 'closed'
+        shell: bash
         run: |
 
           echo "================================="
@@ -285,6 +364,7 @@ jobs:
       # ====================================
 
       - name: Persist observability metrics
+        shell: bash
         run: |
 
           echo "================================="
@@ -299,29 +379,108 @@ jobs:
 
           git add observability/
 
+          # ==================================
           # Commit only if changes exist
-          if ! git diff --cached --quiet; then
+          # ==================================
 
-            git commit -m \
-              "📊 Update observability metrics [skip ci]"
+          if git diff --cached --quiet; then
 
-            git push
+            echo "No observability changes detected"
 
-            echo "✅ Observability metrics persisted"
-
-          else
-
-            echo "ℹ️ No observability changes detected"
+            exit 0
 
           fi
+
+          git commit -m \
+            "📊 Update observability metrics [skip ci]"
+
+          # ==================================
+          # Retry-safe push
+          # ==================================
+
+          for i in 1 2 3; do
+
+            echo "Push attempt $i"
+
+            git pull --rebase origin master || true
+
+            if git push origin master; then
+
+              echo "Push successful"
+
+              exit 0
+
+            fi
+
+            echo "Retrying push..."
+
+            sleep 5
+
+          done
+
+          echo "Push failed after retries"
+
+          exit 1
 
       # ====================================
       # Workflow completion
       # ====================================
 
       - name: Final workflow status
+        shell: bash
         run: |
 
           echo "================================="
           echo "✅ Incident workflow completed"
           echo "================================="
+
+  # ========================================
+  # WEEKLY ANALYTICS REPORT
+  # ========================================
+
+  weekly-report:
+
+    if: github.event.name == 'schedule'
+
+    runs-on: ubuntu-latest
+
+    timeout-minutes: 10
+
+    steps:
+
+      # ====================================
+      # Checkout repository
+      # ====================================
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ====================================
+      # Make scripts executable
+      # ====================================
+
+      - name: Make scripts executable
+        shell: bash
+        run: |
+
+          chmod +x .github/scripts/*.sh
+
+      # ====================================
+      # Run weekly report
+      # ====================================
+
+      - name: Run weekly observability report
+        shell: bash
+        env:
+
+          TG_TOKEN: ${{ secrets.SUMMARY_BOT_TOKEN }}
+
+          CHAT_ID: ${{ secrets.CHAT_ID }}
+
+          THREAD_ID: ${{ secrets.ALERTS_TOPIC_ID }}
+
+          SUMMARY_TIMEZONE: ${{ secrets.SUMMARY_TIMEZONE }}
+
+        run: |
+
+          bash .github/scripts/weekly-report.sh
