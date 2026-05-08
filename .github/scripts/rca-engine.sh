@@ -1,9 +1,5 @@
 #!/usr/bin/env bash
 
-# ==========================================
-# RCA Intelligence Engine
-# ==========================================
-
 generate_rca() {
 
   local SITE="$1"
@@ -17,7 +13,7 @@ generate_rca() {
   LOWER=$(echo "$SITE" | tr '[:upper:]' '[:lower:]')
 
   # ========================================
-  # TEST / STAGING SITES
+  # TEST / STAGING
   # ========================================
 
   if [[ "$LOWER" =~ test|debug|sandbox|staging|dev ]]; then
@@ -32,13 +28,13 @@ generate_rca() {
 
     ETA="Likely short-lived"
 
-    SEVERITY="🧪 Test Alert"
+    SEVERITY="🧪 Testing"
 
     return
   fi
 
   # ========================================
-  # PUBLIC WEBSITES
+  # PUBLIC / CDN SITES
   # ========================================
 
   if [[ "$LOWER" =~ google|wikipedia|github ]]; then
@@ -46,13 +42,13 @@ generate_rca() {
     RCA="Likely CDN or provider-side instability."
 
     CHECKS="• Retry from another network
-• Verify local DNS resolution
+• Verify local DNS
 • Check public outage trackers
 • Validate ISP connectivity"
 
     ETA="Usually transient"
 
-    SEVERITY="🌐 External Service"
+    SEVERITY="🌐 External"
 
     return
   fi
@@ -67,8 +63,8 @@ generate_rca() {
 
     CHECKS="• Verify DNS records
 • Check SSL certificates
-• Inspect hosting provider status
-• Validate Cloudflare configuration
+• Inspect Cloudflare dashboard
+• Validate hosting provider health
 • Test server reachability"
 
     ETA="Dependent on provider recovery"
@@ -79,7 +75,7 @@ generate_rca() {
   fi
 
   # ========================================
-  # LATENCY BASED RCA
+  # MASSIVE LATENCY
   # ========================================
 
   if [ "$LATENCY" -gt 3000 ]; then
@@ -87,48 +83,60 @@ generate_rca() {
     RCA="Progressive backend degradation or infrastructure overload."
 
     CHECKS="• Check CPU/RAM usage
-• Review reverse proxy health
-• Inspect database latency
-• Check Cloudflare analytics
-• Verify hosting metrics
-• Inspect recent deployments"
+• Inspect reverse proxy health
+• Verify database performance
+• Review Cloudflare analytics
+• Monitor hosting metrics
+• Inspect deployment changes"
 
     ETA="10–30 mins"
 
     SEVERITY="🛑 Critical"
 
+  # ========================================
+  # HIGH LATENCY
+  # ========================================
+
   elif [ "$LATENCY" -gt 1500 ]; then
 
-    RCA="High upstream latency and degraded server responsiveness."
+    RCA="High upstream latency and degraded application responsiveness."
 
-    CHECKS="• Verify API response times
-• Review application logs
-• Inspect network bottlenecks
-• Monitor resource utilization"
+    CHECKS="• Review application logs
+• Verify API response times
+• Monitor network bottlenecks
+• Inspect resource utilization"
 
     ETA="5–15 mins"
 
     SEVERITY="🚨 Major"
 
+  # ========================================
+  # MEDIUM LATENCY
+  # ========================================
+
   elif [ "$LATENCY" -gt 700 ]; then
 
-    RCA="Elevated response latency detected before outage."
+    RCA="Elevated latency detected before outage."
 
-    CHECKS="• Verify hosting stability
-• Review DNS health
-• Monitor upstream APIs"
+    CHECKS="• Verify upstream APIs
+• Inspect hosting stability
+• Monitor DNS health"
 
     ETA="Monitoring recovery"
 
     SEVERITY="⚠️ Moderate"
 
+  # ========================================
+  # LOW LATENCY FAILURE
+  # ========================================
+
   else
 
     RCA="Temporary connectivity instability."
 
-    CHECKS="• Verify DNS health
-• Check SSL validity
-• Inspect routing/network path"
+    CHECKS="• Verify SSL validity
+• Inspect routing/network path
+• Review transient connectivity"
 
     ETA="Likely transient"
 
