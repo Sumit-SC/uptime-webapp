@@ -10,7 +10,7 @@
   "personal-lab": {
     "spikes": 0,
     "last_alert": 1778260672,
-    "active": true,
+    "active": false,
     "avg": 1081,
     "deviation": 0,
     "weekly_spikes": 8
@@ -18,7 +18,7 @@
   "portfolio-website": {
     "spikes": 0,
     "last_alert": 1778260672,
-    "active": true,
+    "active": false,
     "avg": 980,
     "deviation": 0,
     "weekly_spikes": 10
@@ -42,13 +42,13 @@
   "streamio": {
     "spikes": 0,
     "last_alert": 1778260672,
-    "active": true,
+    "active": false,
     "avg": 1071,
     "deviation": 0,
     "weekly_spikes": 6
   },
   "test-shopping": {
-    "spikes": 1,
+    "spikes": 2,
     "last_alert": 1778269996,
     "active": true,
     "avg": 1,
