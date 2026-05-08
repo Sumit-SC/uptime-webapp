@@ -15,6 +15,19 @@ if [ ! -f "$DB" ]; then
 fi
 
 # ==========================================
+# Normalize site names
+# ==========================================
+
+normalize_site() {
+
+  echo "$1" \
+    | tr '[:upper:]' '[:lower:]' \
+    | sed 's/^[^[:alnum:]]*//' \
+    | sed 's/[[:space:]]*$//' \
+    | xargs
+}
+
+# ==========================================
 # Get slug
 # ==========================================
 
@@ -22,14 +35,27 @@ get_slug() {
 
   local SITE="$1"
 
-  jq -r \
-    --arg site "$(echo "$SITE" | tr '[:upper:]' '[:lower:]')" \
+  NORMALIZED=$(normalize_site "$SITE")
+
+  SLUG=$(jq -r \
+    --arg site "$NORMALIZED" \
     '.[] |
       select((.name | ascii_downcase) == $site) |
       .slug' \
-    history/summary.json
-}
+    history/summary.json)
 
+  # fallback slug generation
+
+  if [ -z "$SLUG" ] || [ "$SLUG" = "null" ]; then
+
+    SLUG=$(echo "$NORMALIZED" \
+      | sed 's/ /-/g' \
+      | sed 's/[^a-z0-9-]//g')
+
+  fi
+
+  echo "$SLUG"
+}
 
 # ==========================================
 # Get site URL
@@ -39,8 +65,12 @@ get_site_url() {
 
   local SITE="$1"
 
+  NORMALIZED=$(normalize_site "$SITE")
+
   URL=$(yq e \
-    ".sites[] | select(.name == \"$SITE\") | .url" \
+    '.sites[] |
+      select((.name | downcase) == "'"$NORMALIZED"'") |
+      .url' \
     .upptimerc.yml)
 
   if [ -z "$URL" ] || [ "$URL" = "null" ]; then
@@ -49,7 +79,6 @@ get_site_url() {
     echo "$URL"
   fi
 }
-
 
 # ==========================================
 # Get latency
@@ -61,18 +90,19 @@ get_latency() {
 
   local FILE="history/$SLUG.yml"
 
-  if [ -f "$FILE" ]; then
-
-    LAT=$(grep 'responseTime:' "$FILE" | awk '{print $2}')
-
-    if [ -n "$LAT" ]; then
-      echo "$LAT"
-    else
-      echo "unknown"
-    fi
-
-  else
+  if [ ! -f "$FILE" ]; then
     echo "unknown"
+    return
+  fi
+
+  LAT=$(grep 'responseTime:' "$FILE" \
+    | tail -1 \
+    | awk '{print $2}')
+
+  if [ -z "$LAT" ]; then
+    echo "unknown"
+  else
+    echo "$LAT"
   fi
 }
 
@@ -84,9 +114,13 @@ get_uptime() {
 
   local SITE="$1"
 
+  NORMALIZED=$(normalize_site "$SITE")
+
   VALUE=$(jq -r \
-    --arg site "$SITE" \
-    '.[] | select(.name == $site) | .uptime' \
+    --arg site "$NORMALIZED" \
+    '.[] |
+      select((.name | ascii_downcase) == $site) |
+      .uptime' \
     history/summary.json)
 
   if [ -z "$VALUE" ] || [ "$VALUE" = "null" ]; then
@@ -97,7 +131,7 @@ get_uptime() {
 }
 
 # ==========================================
-# Get MTTR
+# Get MTTR historical avg
 # ==========================================
 
 get_mttr() {
@@ -140,7 +174,8 @@ increment_incidents() {
 
   jq \
     --arg slug "$SLUG" \
-    '.[$slug].incidents = ((.[$slug].incidents // 0) + 1)' \
+    '.[$slug].incidents =
+      ((.[$slug].incidents // 0) + 1)' \
     "$DB" > "$TMP"
 
   mv "$TMP" "$DB"
