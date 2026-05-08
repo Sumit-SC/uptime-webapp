@@ -1,22 +1,26 @@
 #!/usr/bin/env bash
 
+set -e
+
 # ==========================================
-# Shared Metrics Helper
+# Shared observability helper functions
 # ==========================================
 
 DB="observability/incident-metrics.json"
 
-# ------------------------------------------
+# ==========================================
 # Ensure DB exists
-# ------------------------------------------
+# ==========================================
 
 mkdir -p observability
 
-[ ! -f "$DB" ] && echo "{}" > "$DB"
+if [ ! -f "$DB" ]; then
+  echo "{}" > "$DB"
+fi
 
-# ------------------------------------------
-# Get slug from site
-# ------------------------------------------
+# ==========================================
+# Get site slug
+# ==========================================
 
 get_slug() {
 
@@ -28,9 +32,9 @@ get_slug() {
     history/summary.json
 }
 
-# ------------------------------------------
+# ==========================================
 # Get latency
-# ------------------------------------------
+# ==========================================
 
 get_latency() {
 
@@ -39,50 +43,68 @@ get_latency() {
   local FILE="history/$SLUG.yml"
 
   if [ -f "$FILE" ]; then
-    grep 'responseTime:' "$FILE" | awk '{print $2}'
+
+    LAT=$(grep 'responseTime:' "$FILE" | awk '{print $2}')
+
+    if [ -n "$LAT" ]; then
+      echo "$LAT"
+    else
+      echo "unknown"
+    fi
+
   else
     echo "unknown"
   fi
 }
 
-# ------------------------------------------
-# Get uptime %
-# ------------------------------------------
+# ==========================================
+# Get uptime
+# ==========================================
 
 get_uptime() {
 
   local SITE="$1"
 
-  jq -r \
+  UPTIME=$(jq -r \
     --arg site "$SITE" \
     '.[] | select(.name == $site) | .uptime' \
-    history/summary.json
+    history/summary.json)
+
+  if [ -z "$UPTIME" ] || [ "$UPTIME" = "null" ]; then
+    echo "Unknown"
+  else
+    echo "$UPTIME"
+  fi
 }
 
-# ------------------------------------------
-# Calculate MTTR
-# ------------------------------------------
+# ==========================================
+# Get MTTR
+# ==========================================
 
 get_mttr() {
 
   local SLUG="$1"
 
-  jq -r \
+  VALUE=$(jq -r \
     --arg slug "$SLUG" \
     '.[$slug].mttr // 0' \
-    "$DB"
+    "$DB")
+
+  echo "${VALUE:-0}"
 }
 
-# ------------------------------------------
+# ==========================================
 # Get incident count
-# ------------------------------------------
+# ==========================================
 
 get_incidents() {
 
   local SLUG="$1"
 
-  jq -r \
+  VALUE=$(jq -r \
     --arg slug "$SLUG" \
     '.[$slug].incidents // 0' \
-    "$DB"
+    "$DB")
+
+  echo "${VALUE:-0}"
 }
