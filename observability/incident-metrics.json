@@ -20,11 +20,12 @@
   "my-web": {
     "active": false,
     "last_incident": 1778131960,
-    "incidents": 1,
+    "incidents": 2,
     "weekly": 1,
     "flaps": 0,
     "downtime": 58411,
-    "mttr": 58411
+    "mttr": 58411,
+    "last_down": 1778263370
   },
   "portfolio-page": {
     "active": false,
