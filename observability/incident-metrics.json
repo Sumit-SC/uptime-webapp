@@ -46,8 +46,8 @@
     "mttr": 5908
   },
   "debug-test": {
-    "incidents": 1,
-    "last_down": 1778260838
+    "incidents": 2,
+    "last_down": 1778263394
   },
   "test-shopping": {
     "incidents": 1,
