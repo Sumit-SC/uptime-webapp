@@ -38,7 +38,7 @@ With [Upptime](https://upptime.js.org), you can get your own unlimited and free 
 
 <td valign="top" width="50%">
 
-## 🚀 Infrastructure Observability (Tg Notifications)
+## 🚀 Infra Alerts (Telegram)
 
 | Workflow | Status |
 |---|---|
