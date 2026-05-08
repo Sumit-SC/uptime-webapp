@@ -74,10 +74,10 @@ sites:
   # # Offline Site to test for outage alert-checks
   - name: Test-Shopping
     url: https//Shopping.com
-  # - name: Debug-app
-  #   url: https://example.koj.co
-  # - name: my-web
-  #   url: test.com
+  - name: Debug-app
+    url: https://example.koj.co
+  - name: my-web
+    url: test.com
   - name: Debug-Test
     url: https://example.invalid
   #
