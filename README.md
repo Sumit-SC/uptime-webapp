@@ -1,4 +1,3 @@
-
 # [📈 Live Status](https://demo.upptime.js.org): <!--live status--> **🟩 All systems operational**
 
 This repository contains the open-source uptime monitor and status page for [Sumit S. Chaure](https://github.com/Sumit-SC), powered by [Upptime](https://github.com/upptime/upptime).
@@ -30,21 +29,22 @@ With [Upptime](https://upptime.js.org), you can get your own unlimited and free 
 
 [**Visit Upptimes Demo status website →**](https://demo.upptime.js.org) to [create](https://github.com/upptime/upptime) your own Upptime Monitor for free
 
+
 ---
-# 📡 Runners Stack & CI-CD testing Metrics
+# 📡 Runners Stack & CI-CD Testing Metrics
 
 <table>
 <tr>
 
 <td valign="top" width="50%">
 
-## 🚀 Infrastructure Observability (Tg Notifications)
+## 📨 Infra Alerts (TG Notifications)
 
 | Workflow | Status |
 |---|---|
-| Infrastructure Digest | [![📊 Infra Summary](https://github.com/Sumit-SC/ping/actions/workflows/telegram-summary.yml/badge.svg)](https://github.com/Sumit-SC/ping/actions/workflows/telegram-summary.yml) |
-| Latency Alerts | [![⚡ Latency Monitor](https://github.com/Sumit-SC/ping/actions/workflows/latency-alert.yml/badge.svg)](https://github.com/Sumit-SC/ping/actions/workflows/latency-alert.yml) |
-| Incident Alerts | [![🚨 Incident Alerts](https://github.com/Sumit-SC/ping/actions/workflows/incident-alert.yml/badge.svg)](https://github.com/Sumit-SC/ping/actions/workflows/incident-alert.yml) |
+| Infrastructure Digest | [![📊 Summary](https://github.com/Sumit-SC/ping/actions/workflows/telegram-summary.yml/badge.svg?branch=main)](https://github.com/Sumit-SC/ping/actions/workflows/telegram-summary.yml) |
+| Latency Alerts | [![⚡ Latency](https://github.com/Sumit-SC/ping/actions/workflows/latency-alert.yml/badge.svg?branch=main)](https://github.com/Sumit-SC/ping/actions/workflows/latency-alert.yml) |
+| Incident Alerts | [![🚨 Incidents](https://github.com/Sumit-SC/ping/actions/workflows/incident-alert.yml/badge.svg?branch=main)](https://github.com/Sumit-SC/ping/actions/workflows/incident-alert.yml) |
 
 </td>
 
@@ -54,11 +54,11 @@ With [Upptime](https://upptime.js.org), you can get your own unlimited and free 
 
 | Workflow | Status |
 |---|---|
-| Uptime CI | [![🩺 Uptime Checks](https://github.com/Sumit-SC/uptime-webapp/workflows/Uptime%20CI/badge.svg)](https://github.com/Sumit-SC/uptime-webapp/actions?query=workflow%3A%22Uptime+CI%22) |
-| Response Time CI | [![⚡ Response Metrics](https://github.com/Sumit-SC/uptime-webapp/workflows/Response%20Time%20CI/badge.svg)](https://github.com/Sumit-SC/uptime-webapp/actions?query=workflow%3A%22Response+Time+CI%22) |
-| Graphs CI | [![📈 Graph Engine](https://github.com/Sumit-SC/uptime-webapp/workflows/Graphs%20CI/badge.svg)](https://github.com/Sumit-SC/uptime-webapp/actions?query=workflow%3A%22Graphs+CI%22) |
-| Static Site CI | [![🌐 Status Site](https://github.com/Sumit-SC/uptime-webapp/workflows/Static%20Site%20CI/badge.svg)](https://github.com/Sumit-SC/uptime-webapp/actions?query=workflow%3A%22Static+Site+CI%22) |
-| Summary CI | [![📝 Status Summary](https://github.com/Sumit-SC/uptime-webapp/workflows/Summary%20CI/badge.svg)](https://github.com/Sumit-SC/uptime-webapp/actions?query=workflow%3A%22Summary+CI%22) |
+| Uptime Checks | [![🩺 Uptime](https://github.com/Sumit-SC/uptime-webapp/actions/workflows/uptime.yml/badge.svg?branch=master)](https://github.com/Sumit-SC/uptime-webapp/actions/workflows/uptime.yml) |
+| Response Metrics | [![⚡ Response](https://github.com/Sumit-SC/uptime-webapp/actions/workflows/response-time.yml/badge.svg?branch=master)](https://github.com/Sumit-SC/uptime-webapp/actions/workflows/response-time.yml) |
+| Graph Engine | [![📈 Graphs](https://github.com/Sumit-SC/uptime-webapp/actions/workflows/graphs.yml/badge.svg?branch=master)](https://github.com/Sumit-SC/uptime-webapp/actions/workflows/graphs.yml) |
+| Status Site | [![🌐 Site](https://github.com/Sumit-SC/uptime-webapp/actions/workflows/static-site.yml/badge.svg?branch=master)](https://github.com/Sumit-SC/uptime-webapp/actions/workflows/static-site.yml) |
+| Status Summary | [![📝 Summary](https://github.com/Sumit-SC/uptime-webapp/actions/workflows/summary.yml/badge.svg?branch=master)](https://github.com/Sumit-SC/uptime-webapp/actions/workflows/summary.yml) |
 
 </td>
 
