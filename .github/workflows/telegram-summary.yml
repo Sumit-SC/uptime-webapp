@@ -140,10 +140,10 @@ name: Advanced Infrastructure Health Digest
 on:
 
  # ========================================
-  # Run every 30 minutes
+  # Run every 15 minutes
   # ========================================
   schedule:
-    - cron: "*/30 * * * *"
+    - cron: "*/15 * * * *"
 
   # ========================================
   # Manual trigger
@@ -202,7 +202,7 @@ jobs:
           # 20 = 8 PM
           # ==================================
 
-          TARGET_HOUR="07"
+          TARGET_HOUR="09"
 
           CURRENT_HOUR=$(TZ="$SUMMARY_TIMEZONE" date +%H)
 
