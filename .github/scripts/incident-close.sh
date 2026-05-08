@@ -26,13 +26,15 @@ echo "Recovered site: $SITE"
 
 SLUG=$(get_slug "$SITE")
 
+SITE_URL=$(get_site_url "$SITE")
+
 LATENCY=$(get_latency "$SLUG")
 
 UPTIME=$(get_uptime "$SITE")
 
 INCIDENTS=$(get_incidents "$SLUG")
 
-MTTR=$(calculate_mttr "$SLUG")
+AVG_MTTR=$(get_mttr "$SLUG")
 
 # ==========================================
 # URLs
@@ -45,16 +47,53 @@ STATUS_URL="$STATUS_BASE_URL/$SLUG"
 GITHUB_ISSUE_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/issues/${ISSUE_NUMBER}"
 
 # ==========================================
-# Downtime classification
+# Downtime calculation
+# Uses GitHub timestamps
 # ==========================================
 
-DOWNTIME_MIN=$((MTTR / 60))
+START=$(date -d "$ISSUE_CREATED_AT" +%s)
+
+END=$(date -d "$ISSUE_CLOSED_AT" +%s)
+
+DIFF=$((END - START))
+
+DOWNTIME_MIN=$((DIFF / 60))
+
+# ==========================================
+# Update rolling MTTR
+# ==========================================
+
+update_mttr "$SLUG" "$DOWNTIME_MIN"
+
+AVG_MTTR=$(get_mttr "$SLUG")
+
+# ==========================================
+# Duration formatting
+# ==========================================
+
+HOURS=$((DIFF / 3600))
+
+MINS=$(((DIFF % 3600) / 60))
+
+if [ "$HOURS" -gt 0 ]; then
+
+  DURATION="${HOURS}h ${MINS}m"
+
+else
+
+  DURATION="${MINS} mins"
+
+fi
+
+# ==========================================
+# Recovery classification
+# ==========================================
 
 RECOVERY_STATE="Stable"
 
-RECOVERY_NOTE="Temporary instability resolved automatically."
+RECOVERY_NOTE="Transient outage auto-resolved."
 
-if [ "$MTTR" -gt 3600 ]; then
+if [ "$DIFF" -gt 3600 ]; then
 
   RECOVERY_STATE="Recovered After Extended Outage"
 
@@ -66,23 +105,17 @@ Possible contributing factors:
 • DNS propagation
 • backend recovery"
 
-elif [ "$MTTR" -gt 900 ]; then
+elif [ "$DIFF" -gt 900 ]; then
 
   RECOVERY_STATE="Recovered After Major Degradation"
 
   RECOVERY_NOTE="Temporary service instability resolved automatically."
 
-elif [ "$MTTR" -gt 300 ]; then
+elif [ "$DIFF" -gt 300 ]; then
 
   RECOVERY_STATE="Recovered After Moderate Instability"
 
   RECOVERY_NOTE="Moderate service degradation resolved successfully."
-
-else
-
-  RECOVERY_STATE="Stable"
-
-  RECOVERY_NOTE="Transient outage auto-resolved."
 
 fi
 
@@ -92,14 +125,80 @@ fi
 
 HEALTH="Healthy"
 
-if [ "$LATENCY" != "unknown" ]; then
+SPEED="⚪ Unknown"
+
+if [[ "$LATENCY" =~ ^[0-9]+$ ]]; then
+
+  # ========================================
+  # Speed ladder
+  # ========================================
+
+  if [ "$LATENCY" -lt 100 ]; then
+
+    SPEED="🚀 Excellent"
+
+  elif [ "$LATENCY" -lt 300 ]; then
+
+    SPEED="⚡ Fast"
+
+  elif [ "$LATENCY" -lt 700 ]; then
+
+    SPEED="🏎️ Responsive"
+
+  elif [ "$LATENCY" -lt 1500 ]; then
+
+    SPEED="🚗 Moderate"
+
+  elif [ "$LATENCY" -lt 3000 ]; then
+
+    SPEED="🐢 Slow"
+
+  else
+
+    SPEED="🐌 Severely Degraded"
+
+  fi
+
+  # ========================================
+  # Recovery health
+  # ========================================
 
   if [ "$LATENCY" -gt 2500 ]; then
+
     HEALTH="Still Degraded"
+
   elif [ "$LATENCY" -gt 1000 ]; then
+
     HEALTH="Partially Stabilized"
+
   elif [ "$LATENCY" -gt 500 ]; then
+
     HEALTH="Elevated Latency"
+
+  fi
+fi
+
+# ==========================================
+# Flapping recovery detection
+# ==========================================
+
+FLAP_WARNING=""
+
+LAST_DOWN=$(jq -r \
+  --arg slug "$SLUG" \
+  '.[$slug].last_down // 0' \
+  observability/incident-metrics.json)
+
+NOW=$(date +%s)
+
+if [ "$LAST_DOWN" -gt 0 ]; then
+
+  GAP=$((NOW - LAST_DOWN))
+
+  if [ "$GAP" -lt 7200 ]; then
+
+    FLAP_WARNING="⚠️ Repeated instability detected after recent recovery."
+
   fi
 fi
 
@@ -118,23 +217,30 @@ UTC_TIME=$(date -u +"%H:%M UTC")
 
 MESSAGE="🟢 Incident Resolved
 
-🌐 Site: $SITE |🔗 : $SITE_URL
 📡 Status: HEALTHY
+
+🌐 Site: $SITE | 🔗 : $SITE_URL
+
 📈 Uptime: $UPTIME
 📊 Recovery State: $RECOVERY_STATE
 📊 Health: $HEALTH
+
 ⚡ Current Latency: $LATENCY ms
+🚦 Speed Class: $SPEED
+
 📉 Incident Count: $INCIDENTS
-📘 MTTR: $DOWNTIME_MIN mins
-⏱ Downtime: $DOWNTIME_MIN mins
+📘 Avg MTTR: $AVG_MTTR mins
+⏱ Downtime: $DURATION
 
 🛠 Recovery Notes:
 $RECOVERY_NOTE
 
+$FLAP_WARNING
+
 🔗 Status Dashboard:
 $STATUS_URL
 
-🛠 Incident Report:
+🛠 GitHub Incident:
 $GITHUB_ISSUE_URL
 
 📄 Incident Archive:
@@ -156,21 +262,30 @@ echo "$MESSAGE"
 
 COMMENT="## 🟢 Automated Recovery Analysis
 
+### 🌐 Recovery Overview
+
 | Metric | Value |
 |---|---|
+| Site | $SITE |
+| Endpoint | $SITE_URL |
 | Status | HEALTHY |
 | Recovery State | $RECOVERY_STATE |
 | Health | $HEALTH |
 | Current Latency | $LATENCY ms |
+| Speed Class | $SPEED |
 | Incident Count | $INCIDENTS |
-| MTTR | $DOWNTIME_MIN mins |
-| Downtime | $DOWNTIME_MIN mins |
+| Avg MTTR | $AVG_MTTR mins |
+| Downtime | $DURATION |
 
 ### 🛠 Recovery Summary
 
 $RECOVERY_NOTE
 
-### 📊 Operational Notes
+### 📊 Stability Signals
+
+$FLAP_WARNING
+
+### 📈 Operational Notes
 
 • Infrastructure recovered successfully
 • Monitoring post-recovery latency stability
@@ -178,15 +293,20 @@ $RECOVERY_NOTE
 
 ### 🔗 References
 
-- Incident Page: $INCIDENT_URL
-- Status Page: $STATUS_URL
+- Status Dashboard: $STATUS_URL
+- GitHub Incident: $GITHUB_ISSUE_URL
+- Incident Archive: $INCIDENT_URL
 
 ---
 
 <sub>
-🟢 Automated recovery analysis generated by Sumit Observability Stack  
-Powered by Upptime + GitHub Actions
-</sub>"
+🤖 Automated recovery analysis generated by Sumit's Observability Stack  
+Maintainer: @Sumit-SC  • Alerts via [Upptime-Alerts-Tracker](https://t.me/mitSutestBot)
+• Powered by [Upptime](upptime.js.org) + [GitHub Actions](https://github.com/features/actions)</sub>"
+
+# ==========================================
+# Post GitHub comment
+# ==========================================
 
 .github/scripts/issue-comment.sh "$COMMENT"
 
