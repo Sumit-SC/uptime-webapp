@@ -4,7 +4,9 @@ set -e
 
 MESSAGE="$1"
 
-echo "Sending Telegram alert..."
+echo "=================================="
+echo "📨 Sending Telegram notification"
+echo "=================================="
 
 PAYLOAD=$(jq -n \
   --arg chat_id "$CHAT_ID" \
@@ -17,9 +19,15 @@ PAYLOAD=$(jq -n \
     disable_web_page_preview: true
   }')
 
-curl -s -X POST \
+RESPONSE=$(curl -s -X POST \
   "https://api.telegram.org/bot$TG_TOKEN/sendMessage" \
   -H "Content-Type: application/json" \
-  -d "$PAYLOAD"
+  -d "$PAYLOAD")
 
-echo "Telegram alert sent."
+echo "Telegram API Response:"
+echo "$RESPONSE"
+
+echo "=================================="
+echo "✅ Telegram script completed"
+echo "=================================="
+
