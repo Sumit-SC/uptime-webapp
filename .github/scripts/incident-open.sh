@@ -58,13 +58,13 @@ $ETA"
 
 echo "$MESSAGE"
 
-==========================================
-TEMP DEBUG MODE
-==========================================
+# ==========================================
+# TEMP DEBUG MODE
+# ==========================================
 
-Uncomment later:
+# Uncomment later:
 bash .github/scripts/tg-send.sh "$MESSAGE"
 
-Uncomment later:
+# Uncomment later:
 bash .github/scripts/issue-comment.sh "$MESSAGE"
 
