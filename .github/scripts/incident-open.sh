@@ -13,7 +13,10 @@ TITLE="$ISSUE_TITLE"
 
 SITE=$(echo "$TITLE" \
   | sed -E 's/ is down.*//' \
+  | sed -E 's/ is up.*//' \
   | sed -E 's/^🟥 //g' \
+  | sed -E 's/^🟩 //g' \
+  | sed -E 's/^🛑 //g' \
   | xargs)
 
 echo "Detected site: $SITE"
