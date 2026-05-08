@@ -51,5 +51,9 @@
   "test-shopping": {
     "incidents": 1,
     "last_down": 1778261981
+  },
+  "debug-app": {
+    "incidents": 1,
+    "last_down": 1778261996
   }
 }
