@@ -38,13 +38,13 @@ With [Upptime](https://upptime.js.org), you can get your own unlimited and free 
 
 <td valign="top" width="50%">
 
-## 🚀 Infrastructure Observability
+## 🚀 Infrastructure Observability (Tg Notifications)
 
 | Workflow | Status |
 |---|---|
-| Infrastructure Digest | [![Advanced Infrastructure Health Digest](https://github.com/Sumit-SC/ping/actions/workflows/telegram-summary.yml/badge.svg)](https://github.com/Sumit-SC/ping/actions/workflows/telegram-summary.yml) |
-| Latency Alerts | [![Advanced Latency Observability](https://github.com/Sumit-SC/ping/actions/workflows/latency-alert.yml/badge.svg)](https://github.com/Sumit-SC/ping/actions/workflows/latency-alert.yml) |
-| Incident Alerts | [![Advanced Incident Observability](https://github.com/Sumit-SC/ping/actions/workflows/incident-alert.yml/badge.svg)](https://github.com/Sumit-SC/ping/actions/workflows/incident-alert.yml) |
+| Infrastructure Digest | [![📊 Infra Summary](https://github.com/Sumit-SC/ping/actions/workflows/telegram-summary.yml/badge.svg)](https://github.com/Sumit-SC/ping/actions/workflows/telegram-summary.yml) |
+| Latency Alerts | [![⚡ Latency Monitor](https://github.com/Sumit-SC/ping/actions/workflows/latency-alert.yml/badge.svg)](https://github.com/Sumit-SC/ping/actions/workflows/latency-alert.yml) |
+| Incident Alerts | [![🚨 Incident Alerts](https://github.com/Sumit-SC/ping/actions/workflows/incident-alert.yml/badge.svg)](https://github.com/Sumit-SC/ping/actions/workflows/incident-alert.yml) |
 
 </td>
 
@@ -54,11 +54,11 @@ With [Upptime](https://upptime.js.org), you can get your own unlimited and free 
 
 | Workflow | Status |
 |---|---|
-| Uptime CI | [![Uptime CI](https://github.com/Sumit-SC/uptime-webapp/workflows/Uptime%20CI/badge.svg)](https://github.com/Sumit-SC/uptime-webapp/actions?query=workflow%3A%22Uptime+CI%22) |
-| Response Time CI | [![Response Time CI](https://github.com/Sumit-SC/uptime-webapp/workflows/Response%20Time%20CI/badge.svg)](https://github.com/Sumit-SC/uptime-webapp/actions?query=workflow%3A%22Response+Time+CI%22) |
-| Graphs CI | [![Graphs CI](https://github.com/Sumit-SC/uptime-webapp/workflows/Graphs%20CI/badge.svg)](https://github.com/Sumit-SC/uptime-webapp/actions?query=workflow%3A%22Graphs+CI%22) |
-| Static Site CI | [![Static Site CI](https://github.com/Sumit-SC/uptime-webapp/workflows/Static%20Site%20CI/badge.svg)](https://github.com/Sumit-SC/uptime-webapp/actions?query=workflow%3A%22Static+Site+CI%22) |
-| Summary CI | [![Summary CI](https://github.com/Sumit-SC/uptime-webapp/workflows/Summary%20CI/badge.svg)](https://github.com/Sumit-SC/uptime-webapp/actions?query=workflow%3A%22Summary+CI%22) |
+| Uptime CI | [![🩺 Uptime Checks](https://github.com/Sumit-SC/uptime-webapp/workflows/Uptime%20CI/badge.svg)](https://github.com/Sumit-SC/uptime-webapp/actions?query=workflow%3A%22Uptime+CI%22) |
+| Response Time CI | [![⚡ Response Metrics](https://github.com/Sumit-SC/uptime-webapp/workflows/Response%20Time%20CI/badge.svg)](https://github.com/Sumit-SC/uptime-webapp/actions?query=workflow%3A%22Response+Time+CI%22) |
+| Graphs CI | [![📈 Graph Engine](https://github.com/Sumit-SC/uptime-webapp/workflows/Graphs%20CI/badge.svg)](https://github.com/Sumit-SC/uptime-webapp/actions?query=workflow%3A%22Graphs+CI%22) |
+| Static Site CI | [![🌐 Status Site](https://github.com/Sumit-SC/uptime-webapp/workflows/Static%20Site%20CI/badge.svg)](https://github.com/Sumit-SC/uptime-webapp/actions?query=workflow%3A%22Static+Site+CI%22) |
+| Summary CI | [![📝 Status Summary](https://github.com/Sumit-SC/uptime-webapp/workflows/Summary%20CI/badge.svg)](https://github.com/Sumit-SC/uptime-webapp/actions?query=workflow%3A%22Summary+CI%22) |
 
 </td>
 
