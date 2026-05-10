@@ -32,7 +32,7 @@
     "weekly_spikes": 1
   },
   "wikipedia": {
-    "spikes": 3,
+    "spikes": 4,
     "last_alert": 1778393348,
     "active": true,
     "avg": 233,
@@ -40,7 +40,7 @@
     "weekly_spikes": 7
   },
   "streamio": {
-    "spikes": 3,
+    "spikes": 4,
     "last_alert": 1778393348,
     "active": true,
     "avg": 1923,
