@@ -32,20 +32,20 @@
     "weekly_spikes": 1
   },
   "wikipedia": {
-    "spikes": 4,
-    "last_alert": 1778393348,
+    "spikes": 5,
+    "last_alert": 1778406826,
     "active": true,
     "avg": 233,
     "deviation": 276,
-    "weekly_spikes": 7
+    "weekly_spikes": 8
   },
   "streamio": {
-    "spikes": 4,
-    "last_alert": 1778393348,
+    "spikes": 5,
+    "last_alert": 1778406826,
     "active": true,
     "avg": 1923,
     "deviation": 561,
-    "weekly_spikes": 8
+    "weekly_spikes": 9
   },
   "test-shopping": {
     "spikes": 2,
