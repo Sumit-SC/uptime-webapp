@@ -139,7 +139,7 @@ name: Infra Health Digest
 
 on:
 
- # ========================================
+  # ========================================
   # Run every 15 minutes
   # ========================================
   schedule:
@@ -205,7 +205,7 @@ jobs:
           # Desired LOCAL delivery hour
           # ==================================
 
-          TARGET_HOUR="03"
+          TARGET_HOUR="11"
 
           # ==================================
           # Recovery fallback window
@@ -218,7 +218,6 @@ jobs:
           # Basic fallback = number
           # FALLBACK_HOURS=("04" "05") # uncomment this to keep things hardcoded & simple
 
-	  # ==================================
           # Dynamic fallback recovery window
           #
           # Allows:
