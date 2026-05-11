@@ -8,12 +8,12 @@
     "weekly_spikes": 5
   },
   "personal-lab": {
-    "spikes": 1,
-    "last_alert": 1778458370,
+    "spikes": 2,
+    "last_alert": 1778474565,
     "active": true,
-    "avg": 856,
-    "deviation": 423,
-    "weekly_spikes": 9
+    "avg": 1098,
+    "deviation": 308,
+    "weekly_spikes": 10
   },
   "portfolio-website": {
     "spikes": 0,
@@ -34,7 +34,7 @@
   "wikipedia": {
     "spikes": 0,
     "last_alert": 1778454835,
-    "active": true,
+    "active": false,
     "avg": 233,
     "deviation": 276,
     "weekly_spikes": 12
@@ -42,7 +42,7 @@
   "streamio": {
     "spikes": 0,
     "last_alert": 1778454835,
-    "active": true,
+    "active": false,
     "avg": 1923,
     "deviation": 561,
     "weekly_spikes": 13
