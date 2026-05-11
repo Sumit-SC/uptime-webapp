@@ -183,79 +183,181 @@ jobs:
         run: |
           mkdir -p observability
           touch observability/summary-last-run
-
-      # ====================================
-      # Time gate
+            # ====================================
+      # Smart summary scheduler
       #
-      # Prevents GitHub cron misses
+      # Handles:
+      # - GitHub cron drift
+      # - retry windows
+      # - duplicate prevention
+      # - persistent delivery state
       # ====================================
-      - name: Time gate
+
+      - name: Smart summary scheduler
+
         id: gate
+
+        shell: bash
+
         run: |
 
           # ==================================
-          # Desired LOCAL hour
-          #
-          # Example:
-          # 07 = 7 AM
-          # 08 = 8 AM
-          # 20 = 8 PM
+          # Desired LOCAL delivery hour
           # ==================================
 
           TARGET_HOUR="03"
 
-          CURRENT_HOUR=$(TZ="$SUMMARY_TIMEZONE" date +%H)
+          # ==================================
+          # Recovery fallback window
+          #
+          # GitHub runners may drift:
+          # 03 → 04 → sometimes 05
+          # during infra load.
+          #
+          # Add retry window.
+          # Basic fallback = number
+          # FALLBACK_HOURS=("04" "05") # uncomment this to keep things hardcoded & simple
+
+	  # ==================================
+          # Dynamic fallback recovery window
+          #
+          # Allows:
+          # TARGET
+          # TARGET +1
+          # TARGET +2
+          #
+          # Example:
+          # 03 → 03/04/05
+          # 08 → 08/09/10
+          # ==================================
+
+          TARGET_NUM=$((10#$TARGET_HOUR))
+
+          FALLBACK_1=$((TARGET_NUM + 1))
+
+          FALLBACK_2=$((TARGET_NUM + 2))
+
+          CURRENT_NUM=$((10#$CURRENT_HOUR))
+
+          echo "Fallback window:"
+          echo "$TARGET_NUM → $FALLBACK_1 → $FALLBACK_2"
+
+          # ==================================
+          # Determine delivery window
+          # ==================================
+
+          RUN_ALLOWED=false
+
+          if [ "$CURRENT_NUM" -ge "$TARGET_NUM" ] && \
+             [ "$CURRENT_NUM" -le "$FALLBACK_2" ]; then
+
+            RUN_ALLOWED=true
+
+          fi
+
+          # ==================================
+          # Current local values
+          # ==================================
+
+          CURRENT_HOUR=$(TZ="$SUMMARY_TIMEZONE" \
+            date +%H)
+
+          CURRENT_DATE=$(TZ="$SUMMARY_TIMEZONE" \
+            date +%Y-%m-%d)
+
+          echo "================================="
+          echo "Summary Scheduler"
+          echo "================================="
 
           echo "Current hour: $CURRENT_HOUR"
+
           echo "Target hour: $TARGET_HOUR"
 
-          # if [ "$CURRENT_HOUR" != "$TARGET_HOUR" ]; then
-          #   echo "Outside summary window."
-          #   exit 0
-          # fi
-          if [ "$CURRENT_HOUR" = "$TARGET_HOUR" ]; then 
-          echo "run=true" >> $GITHUB_OUTPUT 
-          else 
-          echo "run=false" >> $GITHUB_OUTPUT 
+          echo "Current date: $CURRENT_DATE"
+
+          # ==================================
+          # Determine delivery window
+          # ==================================
+
+          RUN_ALLOWED=false
+
+          if [ "$CURRENT_HOUR" = "$TARGET_HOUR" ]; then
+
+            RUN_ALLOWED=true
+
+          else
+
+            for HOUR in "${FALLBACK_HOURS[@]}"; do
+
+              if [ "$CURRENT_HOUR" = "$HOUR" ]; then
+
+                RUN_ALLOWED=true
+
+                echo "Fallback delivery window activated"
+
+                break
+
+              fi
+
+            done
+
           fi
 
-      # ====================================
-      # Prevent duplicate sends
-      # ====================================
-      - name: Prevent duplicate sends
-        id: dedupe 
-        if: steps.gate.outputs.run == 'true'
-        run: |
+          echo "Run allowed: $RUN_ALLOWED"
 
-          LAST_RUN_FILE="observability/summary-last-run"
+          # ==================================
+          # Observability persistence
+          # ==================================
 
-          CURRENT_SLOT=$(TZ="$SUMMARY_TIMEZONE" date +%Y-%m-%d-%H)
-          echo "$CURRENT_SLOT" > observability/summary-last-run
+          mkdir -p observability
 
-          touch "$LAST_RUN_FILE"
+          STATE_FILE="observability/summary-last-run.json"
 
-          LAST=$(cat "$LAST_RUN_FILE")
+          if [ ! -f "$STATE_FILE" ]; then
 
-          echo "Current slot: $CURRENT_SLOT"
-          echo "Last slot: $LAST"
+            echo "{}" > "$STATE_FILE"
 
-          if [ "$LAST" = "$CURRENT_SLOT" ]; then
-            echo "send=false" >> $GITHUB_OUTPUT
-            echo "Summary already sent."
+          fi
+
+          LAST_RUN_DATE=$(jq -r \
+            '.last_summary_date // "never"' \
+            "$STATE_FILE")
+
+          echo "Last summary date: $LAST_RUN_DATE"
+
+          # ==================================
+          # Prevent duplicate daily sends
+          # ==================================
+
+          if [ "$LAST_RUN_DATE" = "$CURRENT_DATE" ]; then
+
+            echo "Summary already delivered today."
+
+            echo "run=false" >> $GITHUB_OUTPUT
+
             exit 0
+
           fi
 
-          echo "$CURRENT_SLOT" > "$LAST_RUN_FILE"
-          echo "send=true" >> $GITHUB_OUTPUT
+          # ==================================
+          # Final gate decision
+          # ==================================
 
-      # ====================================
-      # Start runtime timer
-      # ====================================
-      - name: Start timer
-        run: |
-          echo "START=$(date +%s)" >> $GITHUB_ENV
+          if [ "$RUN_ALLOWED" = true ]; then
 
+            echo "Summary delivery approved."
 
+            echo "run=true" >> $GITHUB_OUTPUT
+
+          else
+
+            echo "Outside delivery window."
+
+            echo "run=false" >> $GITHUB_OUTPUT
+
+          fi
+          
+      
       # ====================================
       # Build infrastructure summary
       # ====================================
