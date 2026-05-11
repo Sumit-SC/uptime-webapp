@@ -8,12 +8,12 @@
     "weekly_spikes": 5
   },
   "personal-lab": {
-    "spikes": 6,
-    "last_alert": 1778510642,
+    "spikes": 7,
+    "last_alert": 1778526966,
     "active": true,
     "avg": 1098,
     "deviation": 308,
-    "weekly_spikes": 13
+    "weekly_spikes": 14
   },
   "portfolio-website": {
     "spikes": 0,
