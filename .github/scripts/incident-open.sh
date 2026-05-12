@@ -209,9 +209,9 @@ echo "$MESSAGE"
 # GitHub comment
 # ==========================================
 
-COMMENT="🚨 Automated Incident Analysis
+COMMENT="## 🚨 Automated Incident Analysis
 
-🌐 Service Information
+### 🌐 Service Information
 
 | Metric | Value |
 |---|---|
@@ -226,23 +226,23 @@ COMMENT="🚨 Automated Incident Analysis
 | Avg MTTR | $MTTR mins |
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🛠 Probable Cause
+### 🛠 Probable Cause
 
 $RCA
 
-🔍 Suggested Checks
+### 🔍 Suggested Checks
 
 $CHECKS
 
-⏳ Estimated Recovery
+### ⏳ Estimated Recovery
 
 $ETA
 
-⚠️ Stability Signals
+### ⚠️ Stability Signals
 
 $FLAP_WARNING
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🔗 References
+### 🔗 References
 
 - Status Dashboard: $STATUS_URL
 - GitHub Incident: $GITHUB_ISSUE_URL
