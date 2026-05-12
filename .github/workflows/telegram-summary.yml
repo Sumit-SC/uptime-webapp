@@ -205,7 +205,7 @@ jobs:
           # Desired LOCAL delivery hour
           # ==================================
 
-          TARGET_HOUR="8"
+          TARGET_HOUR="09"
 
           # ==================================
           # Recovery fallback window
@@ -230,13 +230,14 @@ jobs:
           # 08 → 08/09/10
           # ==================================
 
-          TARGET_NUM=$((TARGET_HOUR))
+          TARGET_NUM=$((10#$TARGET_HOUR))
+
+          CURRENT_NUM=$((10#$CURRENT_HOUR))
 
           FALLBACK_1=$((TARGET_NUM + 1))
 
           FALLBACK_2=$((TARGET_NUM + 2))
-
-          CURRENT_NUM=$((CURRENT_HOUR))
+        
 
           echo "Fallback window:"
           echo "$TARGET_NUM → $FALLBACK_1 → $FALLBACK_2"
