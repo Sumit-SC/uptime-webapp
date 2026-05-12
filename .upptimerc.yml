@@ -70,6 +70,9 @@ sites:
   - name: Streamio
     url: https://idx.theworkpc.com
     icon: https://i.postimg.cc/XqWnmDXr/Picsart-25-10-09-08-09-45-867.png
+  - name: Streamio V2
+    url: https://hardik.indevs.in
+    icon: https://i.postimg.cc/XqWnmDXr/Picsart-25-10-09-08-09-45-867.png
     
   # # Offline Site to test for outage alert-checks
   # - name: Test-Shopping
