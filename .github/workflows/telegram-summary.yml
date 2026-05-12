@@ -135,7 +135,7 @@
 # Actual Working Code ⬇️
 # ==========================================
 
-name: Infra Health Digest
+name: ⚒️Infra Health Digest
 
 on:
 
@@ -143,7 +143,7 @@ on:
   # Run every 15 minutes
   # ========================================
   schedule:
-    - cron: "*/30 * * * *"
+    - cron: "*/15 * * * *"
 
   # ========================================
   # Manual trigger
@@ -205,7 +205,27 @@ jobs:
           # Desired LOCAL delivery hour
           # ==================================
 
-          TARGET_HOUR="09"
+          TARGET_HOUR="10"
+          #
+          # ==================================
+          # Current local values
+          # ==================================
+
+          CURRENT_HOUR=$(TZ="$SUMMARY_TIMEZONE" \
+            date +%H)
+
+          CURRENT_DATE=$(TZ="$SUMMARY_TIMEZONE" \
+            date +%Y-%m-%d)
+
+          echo "================================="
+          echo "Summary Scheduler"
+          echo "================================="
+          
+          echo "Current hour: $CURRENT_HOUR"
+
+          echo "Target hour: $TARGET_HOUR"
+
+          echo "Current date: $CURRENT_DATE"
 
           # ==================================
           # Recovery fallback window
@@ -254,56 +274,37 @@ jobs:
             RUN_ALLOWED=true
 
           fi
-
-          # ==================================
-          # Current local values
-          # ==================================
-
-          CURRENT_HOUR=$(TZ="$SUMMARY_TIMEZONE" \
-            date +%H)
-
-          CURRENT_DATE=$(TZ="$SUMMARY_TIMEZONE" \
-            date +%Y-%m-%d)
-
-          echo "================================="
-          echo "Summary Scheduler"
-          echo "================================="
-
-          echo "Current hour: $CURRENT_HOUR"
-
-          echo "Target hour: $TARGET_HOUR"
-
-          echo "Current date: $CURRENT_DATE"
-
-          # ==================================
-          # Determine delivery window
-          # ==================================
-
-          RUN_ALLOWED=false
-
-          if [ "$CURRENT_HOUR" = "$TARGET_HOUR" ]; then
-
-            RUN_ALLOWED=true
-
-          else
-
-            for HOUR in "${FALLBACK_HOURS[@]}"; do
-
-              if [ "$CURRENT_HOUR" = "$HOUR" ]; then
-
-                RUN_ALLOWED=true
-
-                echo "Fallback delivery window activated"
-
-                break
-
-              fi
-
-            done
-
-          fi
-
           echo "Run allowed: $RUN_ALLOWED"
+
+          # # ==================================
+          # # Determine delivery window
+          # # ==================================
+
+          # RUN_ALLOWED=false
+
+          # if [ "$CURRENT_HOUR" = "$TARGET_HOUR" ]; then
+
+          #   RUN_ALLOWED=true
+
+          # else
+
+          #   for HOUR in "${FALLBACK_HOURS[@]}"; do
+
+          #     if [ "$CURRENT_HOUR" = "$HOUR" ]; then
+
+          #       RUN_ALLOWED=true
+
+          #       echo "Fallback delivery window activated"
+
+          #       break
+
+          #     fi
+
+          #   done
+
+          # fi
+
+          # echo "Run allowed: $RUN_ALLOWED"
 
           # ==================================
           # Observability persistence
