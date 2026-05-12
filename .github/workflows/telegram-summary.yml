@@ -143,7 +143,7 @@ on:
   # Run every 15 minutes
   # ========================================
   schedule:
-    - cron: "*/15 * * * *"
+    - cron: "*/30 * * * *"
 
   # ========================================
   # Manual trigger
@@ -205,7 +205,7 @@ jobs:
           # Desired LOCAL delivery hour
           # ==================================
 
-          TARGET_HOUR="11"
+          TARGET_HOUR="8"
 
           # ==================================
           # Recovery fallback window
