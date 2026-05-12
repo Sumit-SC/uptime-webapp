@@ -217,13 +217,13 @@ COMMENT="## 🚨 Automated Incident Analysis
 |---|---|
 | Site | $SITE |
 | Endpoint | $SITE_URL |
-| Severity | $SEVERITY |
-| Environment | $ENVIRONMENT |
+| Status | HEALTHY |
+| Recovery State | $RECOVERY_STATE |
 | Health | $HEALTH |
-| Response Time | $LATENCY ms |
+| Current Latency | $LATENCY ms |
 | Speed Class | $SPEED |
 | Incident Count | $INCIDENTS |
-| Avg MTTR | $MTTR mins |
+| Avg MTTR | $AVG_MTTR mins |
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ### 🛠 Probable Cause
