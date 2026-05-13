@@ -8,20 +8,20 @@
     "weekly_spikes": 5
   },
   "personal-lab": {
-    "spikes": 1,
-    "last_alert": 1778673719,
+    "spikes": 2,
+    "last_alert": 1778685761,
     "active": true,
-    "avg": 944,
+    "avg": 894,
     "deviation": 999,
-    "weekly_spikes": 16
+    "weekly_spikes": 17
   },
   "portfolio-website": {
-    "spikes": 1,
-    "last_alert": 1778673719,
+    "spikes": 2,
+    "last_alert": 1778685761,
     "active": true,
-    "avg": 773,
+    "avg": 759,
     "deviation": 999,
-    "weekly_spikes": 11
+    "weekly_spikes": 12
   },
   "google": {
     "spikes": 0,
@@ -40,12 +40,12 @@
     "weekly_spikes": 12
   },
   "streamio": {
-    "spikes": 1,
-    "last_alert": 1778673719,
+    "spikes": 2,
+    "last_alert": 1778685761,
     "active": true,
-    "avg": 1874,
+    "avg": 1788,
     "deviation": 999,
-    "weekly_spikes": 15
+    "weekly_spikes": 16
   },
   "test-shopping": {
     "spikes": 2,
@@ -80,11 +80,11 @@
     "weekly_spikes": 1
   },
   "streamio-v2": {
-    "spikes": 5,
-    "last_alert": 1778673719,
+    "spikes": 6,
+    "last_alert": 1778685761,
     "active": true,
-    "avg": 478,
+    "avg": 358,
     "deviation": 999,
-    "weekly_spikes": 4
+    "weekly_spikes": 5
   }
 }
