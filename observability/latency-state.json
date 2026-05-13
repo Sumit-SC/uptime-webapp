@@ -80,7 +80,7 @@
     "weekly_spikes": 1
   },
   "streamio-v2": {
-    "spikes": 3,
+    "spikes": 4,
     "last_alert": 1778654755,
     "active": true,
     "avg": 277,
