@@ -136,6 +136,9 @@
 # ==========================================
 
 name: ⚒️Infra Health Digest
+concurrency:
+  group: observability-${{ github.workflow }}
+  cancel-in-progress: true
 
 on:
 
@@ -155,6 +158,7 @@ jobs:
 
   summary:
 
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
 
     env:
