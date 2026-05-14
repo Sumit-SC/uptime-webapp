@@ -211,7 +211,7 @@ jobs:
           # Desired LOCAL delivery hour
           # ==================================
 
-          TARGET_HOUR="23"
+          TARGET_HOUR="05"
           #
           # ==================================
           # Current local values
@@ -735,7 +735,7 @@ jobs:
           SUMMARY+="\n﹌﹌﹌﹌﹌﹌﹌﹌﹌﹌﹌﹌\n\n"
           if [ -n "$SLOWEST_SITE" ]; then
 
-            SUMMARY+="\n🐌 Slowest Service\n"
+            SUMMARY+="🐌 Slowest Service\n"
             SUMMARY+="• $SLOWEST_SITE ($SLOWEST_LAT ms)\n"
 
           fi
@@ -747,7 +747,7 @@ jobs:
           SUMMARY+="\n﹌﹌﹌﹌﹌﹌﹌﹌﹌﹌﹌﹌\n\n"
           if [ "$MOST_SPIKES" -gt 0 ]; then
 
-            SUMMARY+="\n🚨 Most Unstable\n"
+            SUMMARY+="🚨 Most Unstable\n"
             SUMMARY+="• $MOST_UNSTABLE ($MOST_SPIKES spikes)\n"
 
           fi
@@ -756,7 +756,7 @@ jobs:
           # Operational insights
           # ==================================
           SUMMARY+="\n━━━━━━━━━━━━━━━━━━\n\n"
-          SUMMARY+="\n📡 System Assessment\n"
+          SUMMARY+="📡 System Assessment\n\n"
 
           if [ "$TREND" = "Critical" ]; then
             SUMMARY+="• Critical infrastructure degradation detected\n"
