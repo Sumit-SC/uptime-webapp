@@ -195,7 +195,7 @@ $FLAP_WARNING
 🛠 Issue: $GITHUB_ISSUE_URL
 📄 Incident: $INCIDENT_URL
 
-# 🕒 $LOCAL_TIME | 🌍 $UTC_TIME
+# 🕒 $LOCAL_TIME | 🌍 $UTC_TIME"
 
 echo "$MESSAGE"
 
