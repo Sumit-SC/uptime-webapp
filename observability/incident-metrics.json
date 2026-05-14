@@ -59,5 +59,9 @@
     "incidents": 1,
     "last_down": 1778261996,
     "mttr": 20
+  },
+  "amaosn": {
+    "incidents": 1,
+    "last_down": 1778759580
   }
 }
