@@ -52,7 +52,8 @@
   },
   "test-shopping": {
     "incidents": 1,
-    "last_down": 1778261981
+    "last_down": 1778261981,
+    "mttr": 81
   },
   "debug-app": {
     "incidents": 1,
