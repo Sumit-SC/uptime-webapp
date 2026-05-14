@@ -1,11 +1,11 @@
 {
   "portfolio-page": {
-    "spikes": 2,
-    "last_alert": 1778716477,
+    "spikes": 3,
+    "last_alert": 1778739774,
     "active": true,
-    "avg": 230,
-    "deviation": 776,
-    "weekly_spikes": 6
+    "avg": 324,
+    "deviation": 521,
+    "weekly_spikes": 7
   },
   "personal-lab": {
     "spikes": 0,
@@ -82,7 +82,7 @@
   "streamio-v2": {
     "spikes": 0,
     "last_alert": 1778716477,
-    "active": true,
+    "active": false,
     "avg": 340,
     "deviation": 85,
     "weekly_spikes": 6
