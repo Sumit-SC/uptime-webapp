@@ -3,6 +3,7 @@
 set -e
 
 source .github/scripts/metrics-helper.sh
+source .github/scripts/rca-engine.sh
 
 # ==========================================
 # Parse issue title
@@ -35,6 +36,12 @@ UPTIME=$(get_uptime "$SITE")
 INCIDENTS=$(get_incidents "$SLUG")
 
 AVG_MTTR=$(get_mttr "$SLUG")
+
+# ==========================================
+# Generate RCA intelligence
+# ==========================================
+
+generate_rca "$SITE" "$LATENCY"
 
 # ==========================================
 # URLs
@@ -127,6 +134,8 @@ HEALTH="Healthy"
 
 SPEED="⚪ Unknown"
 
+AVG_MTTR_MIN=$((AVG_MTTR / 60))
+
 if [[ "$LATENCY" =~ ^[0-9]+$ ]]; then
 
   # ========================================
@@ -217,7 +226,7 @@ UTC_TIME=$(date -u +"%H:%M UTC")
 
 MESSAGE="🟢 Incident Resolved
 
-📡 Status: DOWN | 🧪 Environment: $ENVIRONMENT
+📡 Status: RECOVERED | 🧪 Environment: $ENVIRONMENT
 🌐 Site: $SITE | 🔗 : $SITE_URL
 
 📈 Uptime: $UPTIME
@@ -225,7 +234,7 @@ MESSAGE="🟢 Incident Resolved
 ⚡ Response Time: $LATENCY ms
 🚦 Speed Class: $SPEED
 📉 Incident Count: $INCIDENTS | #️⃣ Incident: #$ISSUE_NUMBER
-📘 Avg MTTR: $MTTR mins
+📘 Avg MTTR: $AVG_MTTR_MIN mins
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🛠 Probable Cause:
