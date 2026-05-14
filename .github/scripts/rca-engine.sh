@@ -44,41 +44,37 @@ generate_rca() {
 
   if [[ "$LOWER" =~ test|debug|sandbox|staging|dev ]]; then
 
-    RCA="Possible deployment or testing instability detected."
+    RCA="Deployment instability or staging environment regression."
 
-    CHECKS="• Verify CI/CD pipelines
-• Inspect deployment logs
-• Review recent commits
+    CHECKS="• Review deployment logs
 • Validate API endpoints
-• Check feature flags
-• Inspect staging environment health"
+• Inspect feature flags"
 
     ETA="Likely short-lived"
 
     SEVERITY="🧪 Testing"
 
     return
-  fi
 
+  fi
   # ========================================
   # LARGE PUBLIC SERVICES / CDN
   # ========================================
 
   if [[ "$LOWER" =~ google|wikipedia|github|cloudflare|amazon|flipkart|youtube|instagram ]]; then
 
-    RCA="Likely provider-side instability or CDN routing disruption."
+    RCA="External provider or CDN edge instability."
 
-    CHECKS="• Retry from another network
-• Validate local DNS resolution
-• Check public outage trackers
-• Verify ISP connectivity
-• Monitor CDN/provider status pages"
+    CHECKS="• Verify provider outage status
+• Retry from alternate network
+• Validate local DNS resolution"
 
     ETA="Usually transient"
 
     SEVERITY="🌐 External"
 
     return
+
   fi
 
   # ========================================
@@ -94,18 +90,16 @@ generate_rca() {
 
     RCA="DNS resolution failure or upstream connectivity disruption."
 
-    CHECKS="• Verify DNS records
-• Check SSL certificates
-• Inspect Cloudflare dashboard
-• Validate hosting provider health
-• Verify reverse proxy routing
-• Test server reachability"
+    CHECKS="• Validate DNS + SSL
+• Inspect provider/CDN status
+• Verify origin reachability"
 
-    ETA="Dependent on infrastructure/provider recovery"
+    ETA="Dependent on provider recovery"
 
     SEVERITY="🛑 Critical"
 
     return
+
   fi
 
   # ========================================
@@ -154,15 +148,13 @@ generate_rca() {
 
   elif [ "$LATENCY" -gt 3000 ]; then
 
-    RCA="Progressive backend degradation or infrastructure instability."
+    RCA="Backend saturation or infrastructure overload detected."
 
-    CHECKS="• Review application logs
-• Inspect resource utilization
-• Monitor upstream dependencies
-• Validate database responsiveness
-• Check container orchestration health"
+    CHECKS="• Inspect CPU/RAM + DB load
+• Verify upstream/API health
+• Review deployment changes"
 
-    ETA="10–30 mins"
+    ETA="15–45 mins"
 
     SEVERITY="🚨 Major"
 
@@ -172,15 +164,14 @@ generate_rca() {
 
   elif [ "$LATENCY" -gt 1500 ]; then
 
-    RCA="High upstream latency and degraded application responsiveness."
+    RCA="Severe upstream latency and degraded application responsiveness."
 
-    CHECKS="• Verify API response times
-• Inspect hosting stability
-• Review network bottlenecks
-• Monitor DNS performance
-• Inspect cache/CDN behavior"
+    CHECKS="• Inspect backend response times
+• Verify network/provider health
+• Review traffic anomalies"
 
-    ETA="5–15 mins"
+    ETA="10–30 mins"
+
 
     SEVERITY="🚨 Major"
 
@@ -190,15 +181,13 @@ generate_rca() {
 
   elif [ "$LATENCY" -gt 700 ]; then
 
-    RCA="Elevated latency detected prior to outage event."
+    RCA="Elevated latency detected prior to service degradation."
 
-    CHECKS="• Verify upstream APIs
-• Inspect hosting health
-• Review transient traffic spikes
-• Monitor DNS health
-• Validate SSL handshakes"
+    CHECKS="• Verify upstream dependencies
+• Inspect hosting stability
+• Monitor latency drift"
 
-    ETA="Monitoring stabilization"
+    ETA="Monitoring recovery"
 
     SEVERITY="⚠️ Moderate"
 
@@ -212,17 +201,16 @@ generate_rca() {
 
   else
 
-    RCA="Temporary network instability or transient connectivity disruption."
+    RCA="Short-lived network instability or transient routing degradation."
 
-    CHECKS="• Verify SSL certificate validity
-• Inspect routing/network path
-• Review transient connectivity issues
-• Validate upstream reachability"
+    CHECKS="• Validate upstream reachability
+• Inspect routing/provider health
+• Verify TLS/SSL integrity"
 
     ETA="Likely transient"
 
     SEVERITY="⚠️ Minor"
-
+    
   fi
 
   # ========================================
