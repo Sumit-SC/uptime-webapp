@@ -77,6 +77,7 @@ fi
 
 HEALTH="Stable"
 
+AVG_MTTR_MIN=$((AVG_MTTR / 60))
 # ==========================================
 # Speed ladder
 # ==========================================
@@ -177,7 +178,7 @@ MESSAGE="🚨 Incident Detected
 ⚡ Response Time: $LATENCY ms
 🚦 Speed Class: $SPEED
 📉 Incident Count: $INCIDENTS | #️⃣ Incident: #$ISSUE_NUMBER
-📘 Avg MTTR: $MTTR mins
+📘 Avg MTTR: $AVG_MTTR_MIN mins
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🛠 Probable Cause:
@@ -222,7 +223,7 @@ COMMENT=$(cat <<EOF
 | Health | $HEALTH |
 | Response Time | $LATENCY ms |
 | Incident Count | $INCIDENTS |
-| MTTR | $MTTR mins |
+| MTTR | $AVG_MTTR_MIN mins |
 
 ### 🛠 Probable Cause
 
