@@ -146,7 +146,7 @@ on:
   # Run every 15 minutes
   # ========================================
   schedule:
-    - cron: "*/15 * * * *"
+    - cron: "0 * * * *"
 
   # ========================================
   # Manual trigger
@@ -158,7 +158,7 @@ jobs:
 
   summary:
 
-    if: github.actor != 'github-actions[bot]'
+    # if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
 
     env:
@@ -184,10 +184,13 @@ jobs:
       # Initialize observability storage
       # ====================================
       - name: Initialize observability
+      
         run: |
+        
           mkdir -p observability
-          touch observability/summary-last-run
-            # ====================================
+          touch observability/summary-last-run.json
+      
+      # ====================================
       # Smart summary scheduler
       #
       # Handles:
@@ -209,7 +212,7 @@ jobs:
           # Desired LOCAL delivery hour
           # ==================================
 
-          TARGET_HOUR="17"
+          TARGET_HOUR="19"
           #
           # ==================================
           # Current local values
@@ -369,7 +372,7 @@ jobs:
 
       - name: Build summary
         id: build
-        if: steps.dedupe.outputs.send == 'true'
+        if: steps.gate.outputs.send == 'true'
 
         run: |
 
@@ -780,7 +783,7 @@ jobs:
       # ====================================
 
       - name: Send Telegram summary
-        if: steps.dedupe.outputs.send == 'true'
+        if: steps.gate.outputs.send == 'true'
 
         run: |
 
@@ -800,20 +803,24 @@ jobs:
             -H "Content-Type: application/json" \
             -d "$PAYLOAD"
 
-      # ====================================
-      # Persist observability state
-      # ====================================
-      - name: Persist observability state
-        if: steps.dedupe.outputs.send == 'true'
+      # # ====================================
+      # # Persist observability state
+      # # commented the code because
+      # # workflow commits
+      # # → retrigger workflows
+      # # → infinite Actions minute burn
+      # # ====================================
+      # - name: Persist observability state
+      #   if: steps.gate.outputs.send == 'true'
 
-        run: |
+      #   run: |
 
-          git config user.name "github-actions"
-          git config user.email "actions@github.com"
+      #     git config user.name "github-actions"
+      #     git config user.email "actions@github.com"
 
-          git add observability/summary-last-run
+      #     git add observability/summary-last-run.json
 
-          git diff --cached --quiet || \
-          git commit -m "Update observability state"
+      #     git diff --cached --quiet || \
+      #     git commit -m "Update observability state"
 
-          git push
+      #     git push
