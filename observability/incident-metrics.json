@@ -62,6 +62,7 @@
   },
   "amaosn": {
     "incidents": 1,
-    "last_down": 1778759580
+    "last_down": 1778759580,
+    "mttr": 92
   }
 }
