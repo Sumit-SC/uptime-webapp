@@ -79,8 +79,8 @@ sites:
   #   url: https://www.Shopping.com
   # - name: Debug-app
   #   url: https://example.koj.co
-  - name: my-web
-    url: test.com
+  # - name: my-web
+  #   url: test.com
   # - name: Debug-Test
   #   url: https://example.invalid
   # - name: amaosn
