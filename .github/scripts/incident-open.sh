@@ -225,6 +225,9 @@ COMMENT=$(cat <<EOF
 | Incident Count | $INCIDENTS |
 | MTTR | $AVG_MTTR_MIN mins |
 
+<details>
+<summary>🧠 Explore Incident Intelligence</summary>
+
 ### 🛠 Probable Cause
 
 $RCA
@@ -243,6 +246,7 @@ $ETA
 - GitHub Incident: $GITHUB_ISSUE_URL
 - Incident Archive: $INCIDENT_URL
 
+</details>
 ---
 
 
