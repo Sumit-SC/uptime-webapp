@@ -243,6 +243,19 @@ jobs:
 
             NAME=$(jq -r ".[$i].name" "$FILE")
             STATUS=$(jq -r ".[$i].status" "$FILE")
+            # ========================================
+            # Skip DOWN endpoints
+            # Latency observability should only
+            # analyze healthy services
+            # ========================================
+            if [ "$STATUS" != "up" ]; then
+
+              echo "Skipping DOWN service: $NAME"
+
+              continue
+
+            fi
+
             SLUG=$(jq -r ".[$i].slug" "$FILE")
 
             YML_FILE="history/$SLUG.yml"
