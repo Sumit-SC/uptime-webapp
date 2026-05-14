@@ -188,8 +188,7 @@ jobs:
         run: |
         
           mkdir -p observability
-          touch observability/summary-last-run.json
-      
+          echo "{}" > observability/summary-last-run.json
       # ====================================
       # Smart summary scheduler
       #
@@ -212,7 +211,7 @@ jobs:
           # Desired LOCAL delivery hour
           # ==================================
 
-          TARGET_HOUR="22"
+          TARGET_HOUR="23"
           #
           # ==================================
           # Current local values
@@ -357,6 +356,11 @@ jobs:
 
             echo "run=true" >> $GITHUB_OUTPUT
 
+            jq -n \
+              --arg date "$CURRENT_DATE" \
+              '{last_summary_date:$date}' \
+              > "$STATE_FILE"
+
           else
 
             echo "Outside delivery window."
@@ -372,7 +376,7 @@ jobs:
 
       - name: Build summary
         id: build
-        if: steps.gate.outputs.send == 'true'
+        if: steps.gate.outputs.run == 'true'
 
         run: |
 
@@ -783,7 +787,7 @@ jobs:
       # ====================================
 
       - name: Send Telegram summary
-        if: steps.gate.outputs.send == 'true'
+        if: steps.gate.outputs.run == 'true'
 
         run: |
 
@@ -811,7 +815,7 @@ jobs:
       # # → infinite Actions minute burn
       # # ====================================
       # - name: Persist observability state
-      #   if: steps.gate.outputs.send == 'true'
+      #   if: steps.gate.outputs.run == 'true'
 
       #   run: |
 
