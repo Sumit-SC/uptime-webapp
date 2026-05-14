@@ -150,7 +150,7 @@ name: Latency Observability
 
 concurrency:
   group: latency-observability
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 on:
 
