@@ -78,7 +78,7 @@ sites:
   - name: Test-Shopping
     url: https//Shopping.com
   - name: Debug-app
-  #   url: https://example.koj.co
+    url: https://example.koj.co
   # - name: my-web
   #   url: test.com
   # - name: Debug-Test
