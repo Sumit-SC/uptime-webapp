@@ -209,7 +209,8 @@ echo "$MESSAGE"
 # GitHub comment
 # ==========================================
 
-COMMENT="## 🚨 Automated Incident Analysis
+COMMENT=$(cat <<EOF
+## 🚨 Automated Incident Analysis
 
 ### 🌐 Service Information
 
@@ -255,10 +256,11 @@ Maintainer: @Sumit-SC | Alerts via <a href="https://t.me/mitSutestBot">[Upptime-
 • Powered by <a href="upptime.js.org">Upptime</a> +  <a href="https://github.com/features/actions">Github-Actions</a></a>
 </sub>
 
+EOF )
 ---
 
 # ==========================================
 # Post GitHub comment
 # ==========================================
 
-.github/scripts/issue-comment.sh "$
+bash .github/scripts/issue-comment.sh "$COMMENT"
