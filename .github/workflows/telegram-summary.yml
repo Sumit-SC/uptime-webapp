@@ -135,7 +135,7 @@
 # Actual Working Code ⬇️
 # ==========================================
 
-name: ⚒️Infra Health Digest
+name: 🏗️ Infra Health
 concurrency:
   group: observability-${{ github.workflow }}
   cancel-in-progress: true
